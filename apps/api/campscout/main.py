@@ -11,6 +11,7 @@ from fastapi import Depends, FastAPI
 from campscout.config import Settings, get_settings
 from campscout.db import async_session_factory
 from campscout.providers.recreation_gov import RecreationGovProvider
+from campscout.routers.me import router as me_router
 from campscout.routers.search import router as search_router
 from campscout.scanner.runner import run_scan_cycle
 
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(me_router)
 app.include_router(search_router)
 
 
