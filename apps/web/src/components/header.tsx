@@ -39,6 +39,9 @@ export function Header() {
           CampScout
         </Link>
         <nav className="flex items-center gap-4 text-sm">
+          <Link href="/search" className="text-muted-foreground hover:text-foreground">
+            Search
+          </Link>
           {user ? (
             <>
               <span className="text-muted-foreground">{user.email}</span>
