@@ -4,7 +4,7 @@ This file orients Claude Code (and you) when working on this repo. Read top-to-b
 
 ## What this is
 
-CampScout is a web app for finding available campsites across **Recreation.gov** and **ReserveCalifornia** with two headline features:
+CampScout is a web app for finding available campsites on **Recreation.gov** (with **ReserveCalifornia** planned post-MVP) with two headline features:
 
 1. **Geographic + flexible-date search.** Find campgrounds within a radius of a point (or in a region) that have availability on a date or date range. Recreation.gov's own search is text-based and inflexible; this is the differentiator.
 2. **Saved-search alerts.** Same query, but persisted — re-run on a schedule and notify the user via email/SMS when new availability appears (the Campnab use case).
@@ -18,6 +18,7 @@ Status: pre-MVP. Solo project, portfolio-grade. Target: working demo in ~3 weeks
 - **Mobile app.** Responsive web is enough.
 - **Payments / accounts beyond auth.** Free tool. No Stripe.
 - **Every state's parks system.** Recreation.gov + ReserveCalifornia only for v1.
+- **Live scrape on search miss.** Search reads from `current_availability` only. If a region has no scan coverage, the UI shows "no recent data — save as watch to populate." No on-demand upstream calls in request handlers.
 
 ## Stack
 
@@ -98,6 +99,7 @@ When adding a third provider later, only `providers/` changes.
 If 50 users watch Big Sur for June 2026, the scanner makes **one** request per cycle, not 50. See `scanner/job_planner.py`:
 
 - On any watch create/update/delete, recompute affected `scan_jobs` rows.
+- The weekly facility-sync job also recomputes `scan_jobs` for area-based watches, since new/removed facilities change which `(facility, month)` pairs an area watch covers.
 - Each `scan_jobs` row's `interval_minutes` is the **min** across all active watches that need it.
 - Worker loop: pull due jobs → scrape → upsert `availability_snapshots` and `current_availability` → diff against previous snapshot → fan results out to matching watches → enqueue notifications.
 
@@ -105,9 +107,7 @@ This is the most important non-obvious piece of the design. Don't break it.
 
 ### 3. Search is served from `current_availability`, not live
 
-User search hits Postgres only. We never call upstream APIs in a request handler. Freshness comes from the scanner; UI shows "updated N min ago" per result.
-
-Exception: a "search this region" with no existing scan coverage triggers a one-off scrape on miss, then caches. This is rare and rate-limited per IP.
+User search hits Postgres only. We never call upstream APIs in a request handler. Freshness comes from the scanner; UI shows "updated N min ago" per result. If a region has no scan coverage, the UI shows "no recent data — save as watch to populate."
 
 ### 4. Rate limiting is sacred
 
@@ -204,18 +204,26 @@ Never edit a migration after it's been applied to prod.
 - Day 14: User dashboard — list watches, pause/edit/delete, notification history.
 
 **Week 3 — Polish + deploy**
-- Day 15: ReserveCalifornia provider. Same interface, second `seed` script.
-- Day 16: Deploy API to Fly.io, web to Vercel, DB to Supabase. End-to-end smoke test.
-- Day 17: Error handling, structured logging (structlog), Sentry.
-- Day 18: Empty states, loading states, error UIs. Mobile responsive pass.
-- Day 19: README with screenshots, demo video, project page on personal site.
-- Day 20–21: Buffer. There is always something.
+- Day 15: Deploy API to Fly.io, web to Vercel, DB to Supabase. End-to-end smoke test.
+- Day 16: Error handling, structured logging (structlog), Sentry.
+- Day 17: Empty states, loading states, error UIs. Mobile responsive pass.
+- Day 18: README with screenshots, demo video, project page on personal site.
+- Day 19–21: Buffer. There is always something.
+
+## Post-MVP
+
+- **ReserveCalifornia provider.** Same `Provider` interface, second seed script. Blocked on sniffing the UseDirect request format (see PROVIDERS.md). Add after MVP launch once Recreation.gov is stable.
+- **Additional state park systems.** Same pattern — one provider per system.
+
+## Deferred features
+
+- **`quiet_hours` on notifications.** Suppress alerts during user-defined hours. Column removed from `users` for now; add back when notification volume justifies it.
+- **Per-campsite results.** `campsites` table exists in schema but is not populated for v1. Search results show facility-level site counts and deep-link to the provider for site-level detail.
 
 ## Things I will probably get wrong (pre-mortem)
 
 - **Underestimating frontend.** The map + date picker UX is most of week 2. If it slips, ship a list-only v0 and add the map later.
 - **RIDB rate limits or auth weirdness.** Have a backup plan: scrape the public facility pages once if RIDB is down.
-- **ReserveCalifornia request format changes.** Pin the exact payload shape in `providers/reserve_ca.py` with a fixture-based test so breakage is loud.
 - **Notification spam.** Test dedup hard before letting any real user sign up. The fastest way to get blocked by Resend is sending 100 identical emails in an hour.
 
 ## Working with Claude Code on this repo

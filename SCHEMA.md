@@ -8,6 +8,7 @@ Postgres 16 + PostGIS. All tables use `id BIGSERIAL PRIMARY KEY` unless noted. T
 2. **Availability is a snapshot, not the source of truth.** The booking system is the source of truth; we cache snapshots to power search and detect diffs for alerts.
 3. **Watches are saved searches.** A watch is a parametrized query that the scanner re-runs on a schedule. The same watch object powers both "saved search in UI" and "alert me on changes."
 4. **Provider-agnostic from day one.** `provider` enum on every external-id column. Recreation.gov first, ReserveCalifornia second.
+5. **Area-watch coverage follows facility syncs.** When the weekly facility-sync job adds or removes facilities, it recomputes `scan_jobs` for all active area-based watches (those with `center` + `radius_meters`). This keeps scan coverage in sync with the facility catalog without requiring on-demand recomputation on every search.
 
 ---
 
@@ -49,7 +50,7 @@ CREATE INDEX facilities_name_trgm ON facilities USING GIN (name gin_trgm_ops);
 The `location` GIST index is what makes "within 50mi of (37.7, -122.4)" fast. The trigram index on `name` powers fuzzy text search.
 
 ### `campsites`
-Optional. Sites within a facility. Only populated for facilities you actually scrape availability for. Cheap to add later.
+Optional. Sites within a facility. **Not populated for v1** — search results show facility-level site counts and deep-link to the provider for site-level detail. The table stays in the schema so it's ready when per-campsite filtering is added post-MVP.
 
 ```sql
 CREATE TABLE campsites (
@@ -112,8 +113,6 @@ CREATE TABLE users (
   phone           TEXT,                     -- E.164, optional, for SMS
   notify_email    BOOLEAN NOT NULL DEFAULT TRUE,
   notify_sms      BOOLEAN NOT NULL DEFAULT FALSE,
-  quiet_hours     INT4RANGE,                -- e.g. [22, 8) in user's local time
-  timezone        TEXT NOT NULL DEFAULT 'America/Los_Angeles',
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
@@ -234,7 +233,7 @@ LIMIT 2;
 
 ## Retention
 
-- `availability_snapshots`: keep 7 days, then delete. The diff for alerts only needs the last two snapshots; `current_availability` covers reads.
+- `availability_snapshots`: keep 7 days, then delete. The diff for alerts compares the two most recent *successful* snapshots regardless of time gap; the dedup table prevents notification spam if a long gap produces a noisy diff. `current_availability` covers reads.
 - `notifications`: keep 90 days for user history.
 - Cleanup job runs nightly via the same scheduler.
 
