@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import maplibregl, { LngLatBounds } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { FacilityResult } from "@/lib/types";
+import type { FacilityResult, SoldOutFacility } from "@/lib/types";
 
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_API_KEY;
 const STYLE_URL = `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`;
@@ -35,11 +35,12 @@ interface Props {
   center: { lat: number; lng: number } | null;
   radius: number;
   results: FacilityResult[];
+  soldOut: SoldOutFacility[];
   hoveredId: number | null;
   onMarkerClick: (id: number) => void;
 }
 
-export function SearchMap({ center, radius, results, hoveredId, onMarkerClick }: Props) {
+export function SearchMap({ center, radius, results, soldOut, hoveredId, onMarkerClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<number, maplibregl.Marker>>(new Map());
@@ -116,16 +117,21 @@ export function SearchMap({ center, radius, results, hoveredId, onMarkerClick }:
     }
     markersRef.current.clear();
 
-    if (results.length === 0) return;
+    const allFacilities = [
+      ...results.map((f) => ({ ...f, color: "#ef4444" })),  // red = available
+      ...soldOut.map((f) => ({ ...f, color: "#9ca3af" })),   // grey = sold out
+    ];
+
+    if (allFacilities.length === 0) return;
 
     const bounds = new LngLatBounds();
 
-    for (const facility of results) {
+    for (const facility of allFacilities) {
       const el = document.createElement("div");
       el.className = "search-marker";
       el.dataset.facilityId = String(facility.id);
       el.innerHTML = `<svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.268 21.732 0 14 0z" fill="#ef4444" class="marker-pin"/>
+        <path d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.268 21.732 0 14 0z" fill="${facility.color}" class="marker-pin"/>
         <circle cx="14" cy="14" r="6" fill="white"/>
       </svg>`;
       el.style.cssText = "cursor: pointer; transition: filter 0.15s;";
@@ -146,7 +152,7 @@ export function SearchMap({ center, radius, results, hoveredId, onMarkerClick }:
     }
 
     map.fitBounds(bounds, { padding: 50, maxZoom: 12 });
-  }, [results, center, onMarkerClick]);
+  }, [results, soldOut, center, onMarkerClick]);
 
   // Highlight hovered marker — change SVG fill, not transform (MapLibre owns transform)
   useEffect(() => {

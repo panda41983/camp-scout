@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from campscout.db import get_db
 from campscout.models.availability import CurrentAvailability
 from campscout.models.facility import Facility
-from campscout.schemas.search import FacilityResult, SearchRequest, SearchResponse
+from campscout.schemas.search import FacilityResult, SearchRequest, SearchResponse, SoldOutFacility
 
 router = APIRouter(prefix="/api")
 
@@ -143,4 +143,43 @@ async def search(
     # Sort by number of available dates, descending
     results.sort(key=lambda r: len(r.available_dates), reverse=True)
 
-    return SearchResponse(results=results, total=len(results))
+    # Query for ALL facilities in the radius that are NOT in the available results
+    available_ids = {fr.id for fr in results}
+
+    sold_out_stmt = (
+        select(
+            Facility.id,
+            Facility.name,
+            Facility.parent_name,
+            func.ST_Y(func.geometry(Facility.location)).label("lat"),
+            func.ST_X(func.geometry(Facility.location)).label("lng"),
+            Facility.booking_url,
+        )
+        .where(
+            func.ST_DWithin(Facility.location, center_point, radius_meters),
+        )
+    )
+
+    if available_ids:
+        sold_out_stmt = sold_out_stmt.where(Facility.id.notin_(available_ids))
+
+    sold_out_stmt = sold_out_stmt.order_by(Facility.name)
+
+    sold_out_result = await db.execute(sold_out_stmt)
+    sold_out = [
+        SoldOutFacility(
+            id=row.id,
+            name=row.name,
+            parent_name=row.parent_name,
+            lat=row.lat,
+            lng=row.lng,
+            booking_url=row.booking_url,
+        )
+        for row in sold_out_result.all()
+    ]
+
+    return SearchResponse(
+        results=results,
+        sold_out=sold_out,
+        total=len(results) + len(sold_out),
+    )

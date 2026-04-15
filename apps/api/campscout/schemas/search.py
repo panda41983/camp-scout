@@ -57,6 +57,16 @@ class FacilityResult(BaseModel):
     last_updated: datetime.datetime
 
 
+class SoldOutFacility(BaseModel):
+    id: int
+    name: str
+    parent_name: str | None
+    lat: float
+    lng: float
+    booking_url: str
+
+
 class SearchResponse(BaseModel):
     results: list[FacilityResult]
+    sold_out: list[SoldOutFacility]
     total: int

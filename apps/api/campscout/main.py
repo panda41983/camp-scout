@@ -14,6 +14,7 @@ from campscout.db import async_session_factory
 from campscout.providers.recreation_gov import RecreationGovProvider
 from campscout.routers.me import router as me_router
 from campscout.routers.search import router as search_router
+from campscout.routers.watches import router as watches_router
 from campscout.scanner.runner import run_scan_cycle
 
 log = structlog.get_logger()
@@ -56,6 +57,7 @@ app.add_middleware(
 )
 app.include_router(me_router)
 app.include_router(search_router)
+app.include_router(watches_router)
 
 
 @app.get("/health")

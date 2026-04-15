@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertDialogWatch } from "@/components/alert-dialog-watch";
 import { LocationSearch } from "@/components/location-search";
 import { SearchMap } from "@/components/search-map";
+import { createClient } from "@/lib/supabase/client";
 import { apiClient } from "@/lib/api";
-import type { FacilityResult, SearchResponse } from "@/lib/types";
+import type { FacilityResult, SearchResponse, SoldOutFacility } from "@/lib/types";
 
 interface Location {
   lat: number;
@@ -23,11 +26,24 @@ export default function SearchPage() {
   const [dateEnd, setDateEnd] = useState("");
   const [nights, setNights] = useState(1);
   const [results, setResults] = useState<FacilityResult[]>([]);
+  const [soldOut, setSoldOut] = useState<SoldOutFacility[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [alertFacility, setAlertFacility] = useState<FacilityResult | null>(null);
+  const [watchedIds, setWatchedIds] = useState<Set<number>>(new Set());
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    supabase.auth.getSession().then(({ data }) => {
+      setToken(data.session?.access_token ?? null);
+    });
+  }, []);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -36,6 +52,7 @@ export default function SearchPage() {
     setLoading(true);
     setError(null);
     setResults([]);
+    setSoldOut([]);
     setSearched(false);
 
     try {
@@ -50,6 +67,7 @@ export default function SearchPage() {
         }),
       });
       setResults(data.results);
+      setSoldOut(data.sold_out ?? []);
       setSearched(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed");
@@ -155,8 +173,8 @@ export default function SearchPage() {
           {results.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                {results.length} campground{results.length !== 1 ? "s" : ""} within{" "}
-                {radius}mi of {location?.name}
+                {results.length} campground{results.length !== 1 ? "s" : ""} with
+                availability within {radius}mi of {location?.name}
               </p>
               {results.map((facility) => (
                 <div
@@ -170,6 +188,46 @@ export default function SearchPage() {
                   <ResultCard
                     facility={facility}
                     highlighted={hoveredId === facility.id}
+                    showAlert={!!user}
+                    watching={watchedIds.has(facility.id)}
+                    onAlertClick={() => setAlertFacility(facility)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {soldOut.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Sold out for these dates
+                </span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+              {soldOut.map((facility) => (
+                <div
+                  key={facility.id}
+                  ref={(el) => {
+                    if (el) cardRefs.current.set(facility.id, el);
+                  }}
+                  onMouseEnter={() => setHoveredId(facility.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                >
+                  <SoldOutCard
+                    facility={facility}
+                    highlighted={hoveredId === facility.id}
+                    showAlert={!!user}
+                    watching={watchedIds.has(facility.id)}
+                    onAlertClick={() => {
+                      // Convert to FacilityResult shape for the dialog
+                      setAlertFacility({
+                        ...facility,
+                        available_dates: [],
+                        last_updated: new Date().toISOString(),
+                      });
+                    }}
                   />
                 </div>
               ))}
@@ -184,10 +242,27 @@ export default function SearchPage() {
           center={location}
           radius={radius}
           results={results}
+          soldOut={soldOut}
           hoveredId={hoveredId}
           onMarkerClick={handleMarkerClick}
         />
       </div>
+
+      {/* Alert dialog */}
+      {alertFacility && token && (
+        <AlertDialogWatch
+          facility={alertFacility}
+          dateStart={dateStart}
+          dateEnd={dateEnd}
+          nights={nights}
+          token={token}
+          open={!!alertFacility}
+          onOpenChange={(open) => { if (!open) setAlertFacility(null); }}
+          onSuccess={() => {
+            setWatchedIds((prev) => new Set([...prev, alertFacility.id]));
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -195,9 +270,15 @@ export default function SearchPage() {
 function ResultCard({
   facility,
   highlighted,
+  showAlert,
+  watching,
+  onAlertClick,
 }: {
   facility: FacilityResult;
   highlighted: boolean;
+  showAlert: boolean;
+  watching: boolean;
+  onAlertClick: () => void;
 }) {
   const dateCount = facility.available_dates.length;
   const updatedAt = new Date(facility.last_updated);
@@ -205,10 +286,24 @@ function ResultCard({
   return (
     <Card className={highlighted ? "ring-2 ring-primary" : ""}>
       <CardHeader>
-        <CardTitle className="text-base">{facility.name}</CardTitle>
-        {facility.parent_name && (
-          <p className="text-sm text-muted-foreground">{facility.parent_name}</p>
-        )}
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-base">{facility.name}</CardTitle>
+            {facility.parent_name && (
+              <p className="text-sm text-muted-foreground">{facility.parent_name}</p>
+            )}
+          </div>
+          {showAlert && (
+            <Button
+              variant={watching ? "secondary" : "outline"}
+              size="sm"
+              disabled={watching}
+              onClick={onAlertClick}
+            >
+              {watching ? "Watching" : "Alert me"}
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
@@ -228,6 +323,58 @@ function ResultCard({
             className="text-sm font-medium text-primary hover:underline"
           >
             Book on Recreation.gov
+          </a>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SoldOutCard({
+  facility,
+  highlighted,
+  showAlert,
+  watching,
+  onAlertClick,
+}: {
+  facility: SoldOutFacility;
+  highlighted: boolean;
+  showAlert: boolean;
+  watching: boolean;
+  onAlertClick: () => void;
+}) {
+  return (
+    <Card className={`opacity-70 ${highlighted ? "ring-2 ring-primary opacity-100" : ""}`}>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-base">{facility.name}</CardTitle>
+            {facility.parent_name && (
+              <p className="text-sm text-muted-foreground">{facility.parent_name}</p>
+            )}
+          </div>
+          {showAlert && (
+            <Button
+              variant={watching ? "secondary" : "outline"}
+              size="sm"
+              disabled={watching}
+              onClick={onAlertClick}
+            >
+              {watching ? "Watching" : "Alert me"}
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">No availability for these dates</p>
+          <a
+            href={facility.booking_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            View on Recreation.gov
           </a>
         </div>
       </CardContent>
