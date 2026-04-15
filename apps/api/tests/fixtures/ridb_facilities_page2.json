@@ -1,0 +1,37 @@
+{
+  "RECDATA": [
+    {
+      "FacilityID": "232450",
+      "FacilityName": "Dorst Creek Campground",
+      "FacilityLatitude": 36.6388,
+      "FacilityLongitude": -118.7952,
+      "ParentRecAreaName": "Sequoia National Park",
+      "FacilityDescription": "Quiet campground near General Sherman Tree.",
+      "Campsites": 218,
+      "FacilityMapURL": null,
+      "FACILITYADDRESS": [
+        {
+          "AddressStateCode": "CA",
+          "City": "Three Rivers"
+        }
+      ]
+    },
+    {
+      "FacilityID": "000000",
+      "FacilityName": "Ghost Campground",
+      "FacilityLatitude": 0.0,
+      "FacilityLongitude": 0.0,
+      "ParentRecAreaName": null,
+      "FacilityDescription": null,
+      "Campsites": null,
+      "FacilityMapURL": null,
+      "FACILITYADDRESS": []
+    }
+  ],
+  "METADATA": {
+    "RESULTS": {
+      "CURRENT_COUNT": 2,
+      "TOTAL_COUNT": 52
+    }
+  }
+}

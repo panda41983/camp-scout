@@ -9,14 +9,24 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from campscout.config import get_settings
+from campscout.models import Base
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Will be wired to Base.metadata once models exist.
-target_metadata = None
+target_metadata = Base.metadata
+
+# Only manage tables defined in our models. The PostGIS image includes tiger/topology
+# schema tables that appear in the default search path — exclude everything we don't own.
+OUR_TABLES = set(Base.metadata.tables.keys())
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table" and reflected and name not in OUR_TABLES:
+        return False
+    return True
 
 
 def run_migrations_offline() -> None:
@@ -27,6 +37,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -34,7 +45,11 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+    )
 
     with context.begin_transaction():
         context.run_migrations()

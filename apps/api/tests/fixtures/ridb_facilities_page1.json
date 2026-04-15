@@ -1,0 +1,42 @@
+{
+  "RECDATA": [
+    {
+      "FacilityID": "231958",
+      "FacilityName": "Arroyo Seco Campground",
+      "FacilityLatitude": 36.2327,
+      "FacilityLongitude": -121.4871,
+      "ParentRecAreaName": "Los Padres National Forest",
+      "FacilityDescription": "A scenic campground along Arroyo Seco River.",
+      "Campsites": 49,
+      "FacilityMapURL": null,
+      "FACILITYADDRESS": [
+        {
+          "AddressStateCode": "CA",
+          "City": "Greenfield"
+        }
+      ]
+    },
+    {
+      "FacilityID": "232464",
+      "FacilityName": "Lodgepole Campground",
+      "FacilityLatitude": 36.6040,
+      "FacilityLongitude": -118.7330,
+      "ParentRecAreaName": "Sequoia National Park",
+      "FacilityDescription": "Popular campground in Sequoia.",
+      "Campsites": 204,
+      "FacilityMapURL": "https://example.com/map.jpg",
+      "FACILITYADDRESS": [
+        {
+          "AddressStateCode": "CA",
+          "City": "Three Rivers"
+        }
+      ]
+    }
+  ],
+  "METADATA": {
+    "RESULTS": {
+      "CURRENT_COUNT": 2,
+      "TOTAL_COUNT": 52
+    }
+  }
+}
