@@ -22,11 +22,11 @@ MAX_BACKOFF_MINUTES = 240  # 4 hours
 
 
 def _extract_available_dates(grid: AvailabilityGrid) -> list[datetime.date]:
-    """From a grid, return sorted dates where ANY site has status 'available'."""
+    """From a grid, return sorted dates where ANY site has status 'available' or 'locked'."""
     dates: set[datetime.date] = set()
     for site_dates in grid.values():
         for date_str, status in site_dates.items():
-            if status == "available":
+            if status in ("available", "locked"):
                 dates.add(datetime.date.fromisoformat(date_str))
     return sorted(dates)
 
@@ -50,12 +50,12 @@ async def _get_previous_grid(
 
 
 async def _process_job(
-    session: AsyncSession, job: ScanJob, provider: Provider
+    session: AsyncSession, job: ScanJob, providers: dict[str, Provider]
 ) -> None:
     """Fetch availability for one job, store snapshot, update current, compute diff."""
-    # Look up the facility's external_id, name, and booking_url
+    # Look up the facility's external_id, name, booking_url, and provider
     fac_q = select(
-        Facility.external_id, Facility.name, Facility.booking_url
+        Facility.external_id, Facility.name, Facility.booking_url, Facility.provider
     ).where(Facility.id == job.facility_id)
     fac_result = await session.execute(fac_q)
     fac_row = fac_result.one_or_none()
@@ -67,6 +67,12 @@ async def _process_job(
     external_id = fac_row.external_id
     facility_name = fac_row.name
     booking_url = fac_row.booking_url
+
+    # Route to the correct provider
+    provider = providers.get(fac_row.provider)
+    if provider is None:
+        log.warning("scan_job_unknown_provider", job_id=job.id, provider=fac_row.provider)
+        return
 
     try:
         grid = await provider.fetch_availability(external_id, job.month)
@@ -128,7 +134,7 @@ async def _process_job(
                 newly_available_sites=len(diff.newly_available),
                 newly_unavailable_sites=len(diff.newly_unavailable),
             )
-            if diff.newly_available:
+            if diff.newly_available or diff.newly_locked:
                 sent = await dispatch_notifications(
                     session, job.facility_id, facility_name, booking_url, diff
                 )
@@ -152,7 +158,7 @@ async def _process_job(
 
 async def run_scan_cycle(
     session_factory: async_sessionmaker[AsyncSession],
-    provider: Provider,
+    providers: dict[str, Provider],
 ) -> int:
     """Run one scan cycle: pull due jobs, scrape, store, diff. Returns jobs processed."""
     async with session_factory() as session:
@@ -164,7 +170,7 @@ async def run_scan_cycle(
         log.info("scan_cycle_starting", job_count=len(jobs))
 
         for job in jobs:
-            await _process_job(session, job, provider)
+            await _process_job(session, job, providers)
 
         await session.commit()
 

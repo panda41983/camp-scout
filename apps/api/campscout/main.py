@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from campscout.config import Settings, get_settings
 from campscout.db import async_session_factory
 from campscout.providers.recreation_gov import RecreationGovProvider
+from campscout.providers.reserve_california import ReserveCaliforniaProvider
 from campscout.routers.me import router as me_router
 from campscout.routers.notifications import router as notifications_router
 from campscout.routers.search import router as search_router
@@ -24,18 +25,24 @@ log = structlog.get_logger()
 async def _scan_tick() -> None:
     """Called by APScheduler every 60s to run due scan jobs."""
     settings = get_settings()
-    provider = RecreationGovProvider(
-        api_key=settings.ridb_api_key,
-        user_agent=settings.scan_user_agent,
-    )
+    providers = {
+        "recreation_gov": RecreationGovProvider(
+            api_key=settings.ridb_api_key,
+            user_agent=settings.scan_user_agent,
+        ),
+        "reserve_california": ReserveCaliforniaProvider(
+            user_agent=settings.scan_user_agent,
+        ),
+    }
     try:
-        count = await run_scan_cycle(async_session_factory, provider)
+        count = await run_scan_cycle(async_session_factory, providers)
         if count > 0:
             log.info("scan_tick_done", jobs_processed=count)
     except Exception:
         log.exception("scan_tick_error")
     finally:
-        await provider.aclose()
+        for p in providers.values():
+            await p.aclose()
 
 
 @asynccontextmanager

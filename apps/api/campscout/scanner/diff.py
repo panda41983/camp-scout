@@ -15,18 +15,21 @@ class DiffResult:
     newly_available: dict[str, list[str]] = field(default_factory=dict)
     # campsite_id -> list of date strings that became unavailable
     newly_unavailable: dict[str, list[str]] = field(default_factory=dict)
+    # campsite_id -> list of date strings that became locked (cancellation → will unlock soon)
+    newly_locked: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def has_changes(self) -> bool:
-        return bool(self.newly_available or self.newly_unavailable)
+        return bool(self.newly_available or self.newly_unavailable or self.newly_locked)
 
 
 def compute_diff(old_grid: AvailabilityGrid, new_grid: AvailabilityGrid) -> DiffResult:
-    """Compare old and new grids, return dates that changed to/from 'available'.
+    """Compare old and new grids, return dates that changed status.
 
     - A date changing to 'available' from anything else → newly_available
+    - A date changing to 'locked' from 'reserved' → newly_locked (cancellation detected)
     - A date changing from 'available' to anything else → newly_unavailable
-    - A site appearing in new but not old → all 'available' dates are newly_available
+    - A site appearing in new but not old → all 'available'/'locked' dates tracked
     - A site in old but not new → ignored (provider may have removed the listing)
     """
     result = DiffResult()
@@ -45,6 +48,7 @@ def compute_diff(old_grid: AvailabilityGrid, new_grid: AvailabilityGrid) -> Diff
 
         avail_dates: list[str] = []
         unavail_dates: list[str] = []
+        locked_dates: list[str] = []
 
         for date_str in sorted(all_dates):
             old_status = old_dates.get(date_str, "")
@@ -55,6 +59,9 @@ def compute_diff(old_grid: AvailabilityGrid, new_grid: AvailabilityGrid) -> Diff
 
             if new_status == "available" and old_status != "available":
                 avail_dates.append(date_str)
+            elif new_status == "locked" and old_status != "locked":
+                # Cancellation detected — site will unlock soon
+                locked_dates.append(date_str)
             elif old_status == "available" and new_status != "available":
                 unavail_dates.append(date_str)
 
@@ -62,5 +69,7 @@ def compute_diff(old_grid: AvailabilityGrid, new_grid: AvailabilityGrid) -> Diff
             result.newly_available[site_id] = avail_dates
         if unavail_dates:
             result.newly_unavailable[site_id] = unavail_dates
+        if locked_dates:
+            result.newly_locked[site_id] = locked_dates
 
     return result

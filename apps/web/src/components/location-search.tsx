@@ -25,10 +25,14 @@ export function LocationSearch({ onSelect }: Props) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Feature[]>([]);
   const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState(false);
   const debouncedQuery = useDebounce(query, 300);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Skip fetch if user just selected a result
+    if (selected) return;
+
     if (!debouncedQuery || debouncedQuery.length < 2 || !MAPTILER_KEY) {
       setSuggestions([]);
       return;
@@ -54,7 +58,7 @@ export function LocationSearch({ onSelect }: Props) {
 
     fetchSuggestions();
     return () => { cancelled = true; };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, selected]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -73,6 +77,7 @@ export function LocationSearch({ onSelect }: Props) {
     setQuery(name);
     setSuggestions([]);
     setOpen(false);
+    setSelected(true);
     onSelect({ lat, lng, name });
   }
 
@@ -80,9 +85,11 @@ export function LocationSearch({ onSelect }: Props) {
     <div ref={containerRef} className="relative">
       <Input
         placeholder="Search for a location..."
+        autoComplete="off"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
+          setSelected(false);
           if (!e.target.value) setOpen(false);
         }}
         onFocus={() => {

@@ -50,6 +50,7 @@ class FacilityResult(BaseModel):
     id: int
     name: str
     parent_name: str | None
+    provider: str
     lat: float
     lng: float
     available_dates: list[datetime.date]
@@ -61,6 +62,7 @@ class SoldOutFacility(BaseModel):
     id: int
     name: str
     parent_name: str | None
+    provider: str
     lat: float
     lng: float
     booking_url: str

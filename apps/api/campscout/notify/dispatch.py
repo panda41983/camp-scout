@@ -32,6 +32,12 @@ async def dispatch_notifications(
         campsite_ids.append(site_id)
         for ds in date_strs:
             new_dates.add(datetime.date.fromisoformat(ds))
+    # Locked sites are cancellations about to unlock — also notify
+    for site_id, date_strs in diff.newly_locked.items():
+        if site_id not in campsite_ids:
+            campsite_ids.append(site_id)
+        for ds in date_strs:
+            new_dates.add(datetime.date.fromisoformat(ds))
 
     if not new_dates:
         return 0

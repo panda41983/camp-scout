@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialogWatch } from "@/components/alert-dialog-watch";
+import { DatePicker } from "@/components/date-picker";
 import { LocationSearch } from "@/components/location-search";
 import { SearchMap } from "@/components/search-map";
 import { createClient } from "@/lib/supabase/client";
@@ -46,6 +47,15 @@ export default function SearchPage() {
     supabase.auth.getSession().then(({ data }) => {
       setToken(data.session?.access_token ?? null);
     });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+        setToken(session?.access_token ?? null);
+      },
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   async function handleSearch(e: React.FormEvent) {
@@ -126,23 +136,19 @@ export default function SearchPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="date-start">Check in</Label>
-              <Input
-                id="date-start"
-                type="date"
+              <Label>Check in</Label>
+              <DatePicker
                 value={dateStart}
-                onChange={(e) => setDateStart(e.target.value)}
-                required
+                onChange={setDateStart}
+                placeholder="Select check in"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="date-end">Check out</Label>
-              <Input
-                id="date-end"
-                type="date"
+              <Label>Check out</Label>
+              <DatePicker
                 value={dateEnd}
-                onChange={(e) => setDateEnd(e.target.value)}
-                required
+                onChange={setDateEnd}
+                placeholder="Select check out"
               />
             </div>
           </div>
@@ -162,7 +168,7 @@ export default function SearchPage() {
           <Button
             type="submit"
             disabled={loading || !location || !dateStart || !dateEnd}
-            className={`w-full transition-colors ${
+            className={`w-full cursor-pointer transition-colors ${
               location && dateStart && dateEnd && !loading
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-muted-foreground"
@@ -235,7 +241,7 @@ export default function SearchPage() {
                   <SoldOutCard
                     facility={facility}
                     highlighted={hoveredId === facility.id}
-                    showAlert={!!user}
+                    loggedIn={!!user}
                     watching={watchedIds.has(facility.id)}
                     onAlertClick={() => {
                       // Convert to FacilityResult shape for the dialog
@@ -361,7 +367,7 @@ function ResultCard({
             rel="noopener noreferrer"
             className="text-sm font-semibold text-primary hover:underline"
           >
-            {facility.booking_url.includes("reservecalifornia") ? "Book on ReserveCalifornia" : "Book on Recreation.gov"}
+            {facility.provider === "reserve_california" ? "Book on ReserveCalifornia" : "Book on Recreation.gov"}
           </a>
         </div>
       </CardContent>
@@ -372,13 +378,13 @@ function ResultCard({
 function SoldOutCard({
   facility,
   highlighted,
-  showAlert,
+  loggedIn,
   watching,
   onAlertClick,
 }: {
   facility: SoldOutFacility;
   highlighted: boolean;
-  showAlert: boolean;
+  loggedIn: boolean;
   watching: boolean;
   onAlertClick: () => void;
 }) {
@@ -392,7 +398,7 @@ function SoldOutCard({
               <p className="text-sm text-muted-foreground">{facility.parent_name}</p>
             )}
           </div>
-          {showAlert && (
+          {loggedIn ? (
             <Button
               variant={watching ? "secondary" : "outline"}
               size="sm"
@@ -401,6 +407,10 @@ function SoldOutCard({
             >
               {watching ? "Watching" : "Alert me"}
             </Button>
+          ) : (
+            <Link href="/login" className="text-xs text-muted-foreground hover:text-primary">
+              Log in to set alert
+            </Link>
           )}
         </div>
       </CardHeader>
@@ -413,7 +423,7 @@ function SoldOutCard({
             rel="noopener noreferrer"
             className="text-sm font-medium text-primary hover:underline"
           >
-            {facility.booking_url.includes("reservecalifornia") ? "View on ReserveCalifornia" : "View on Recreation.gov"}
+            {facility.provider === "reserve_california" ? "View on ReserveCalifornia" : "View on Recreation.gov"}
           </a>
         </div>
       </CardContent>
