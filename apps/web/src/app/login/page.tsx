@@ -38,7 +38,7 @@ export default function LoginPage() {
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-24">
         <div className="w-full max-w-sm text-center">
-          <h1 className="text-2xl font-semibold">Check your email</h1>
+          <h1 className="font-heading text-2xl font-bold">Check your email</h1>
           <p className="mt-2 text-muted-foreground">
             We sent a magic link to <span className="font-medium text-foreground">{email}</span>.
             Click the link in the email to log in.
@@ -52,7 +52,7 @@ export default function LoginPage() {
     <div className="flex flex-1 flex-col items-center justify-center px-4 py-24">
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold">Log in to CampScout</h1>
+          <h1 className="font-heading text-2xl font-bold">Log in to CampScout</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Enter your email and we&apos;ll send you a magic link.
           </p>

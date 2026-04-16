@@ -26,7 +26,7 @@ export default function SearchPage() {
   const [radius, setRadius] = useState(50);
   const [dateStart, setDateStart] = useState("");
   const [dateEnd, setDateEnd] = useState("");
-  const [nights, setNights] = useState(1);
+  const [nightsStr, setNightsStr] = useState("1");
   const [results, setResults] = useState<FacilityResult[]>([]);
   const [soldOut, setSoldOut] = useState<SoldOutFacility[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,6 +51,12 @@ export default function SearchPage() {
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!location) return;
+
+    const nights = parseInt(nightsStr, 10);
+    if (!nights || nights < 1) {
+      setError("Minimum consecutive nights must be at least 1");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -91,8 +97,8 @@ export default function SearchPage() {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col lg:flex-row">
       {/* Left panel: form + results */}
-      <div className="w-full overflow-y-auto border-r p-4 lg:w-2/5">
-        <h1 className="text-2xl font-semibold">Search Campgrounds</h1>
+      <div className="w-full overflow-y-auto border-r border-border bg-card p-4 lg:w-2/5">
+        <h1 className="font-heading text-2xl font-bold">Search Campgrounds</h1>
 
         <form onSubmit={handleSearch} className="mt-4 space-y-4">
           <div className="space-y-2">
@@ -148,12 +154,20 @@ export default function SearchPage() {
               type="number"
               min={1}
               max={14}
-              value={nights}
-              onChange={(e) => setNights(Number(e.target.value))}
+              value={nightsStr}
+              onChange={(e) => setNightsStr(e.target.value)}
             />
           </div>
 
-          <Button type="submit" disabled={loading || !location} className="w-full">
+          <Button
+            type="submit"
+            disabled={loading || !location || !dateStart || !dateEnd}
+            className={`w-full transition-colors ${
+              location && dateStart && dateEnd && !loading
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
             {loading ? "Searching..." : "Search"}
           </Button>
         </form>
@@ -258,7 +272,7 @@ export default function SearchPage() {
           facility={alertFacility}
           dateStart={dateStart}
           dateEnd={dateEnd}
-          nights={nights}
+          nights={parseInt(nightsStr, 10) || 1}
           token={token}
           open={!!alertFacility}
           onOpenChange={(open) => { if (!open) setAlertFacility(null); }}
@@ -310,11 +324,11 @@ function ResultCard({
   const updatedAt = new Date(facility.last_updated);
 
   return (
-    <Card className={highlighted ? "ring-2 ring-primary" : ""}>
+    <Card className={`border-border ${highlighted ? "ring-2 ring-blue-500" : ""}`}>
       <CardHeader>
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle className="text-base">{facility.name}</CardTitle>
+            <CardTitle className="text-base text-foreground">{facility.name}</CardTitle>
             {facility.parent_name && (
               <p className="text-sm text-muted-foreground">{facility.parent_name}</p>
             )}
@@ -334,9 +348,8 @@ function ResultCard({
       <CardContent>
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-sm">
-              <span className="font-medium">{dateCount}</span>{" "}
-              date{dateCount !== 1 ? "s" : ""} available
+            <p className="text-sm text-primary font-medium">
+              {dateCount} date{dateCount !== 1 ? "s" : ""} available
             </p>
             <p className="text-xs text-muted-foreground">
               Updated {updatedAt.toLocaleDateString()} {updatedAt.toLocaleTimeString()}
@@ -346,9 +359,9 @@ function ResultCard({
             href={facility.booking_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-medium text-primary hover:underline"
+            className="text-sm font-semibold text-primary hover:underline"
           >
-            Book on Recreation.gov
+            {facility.booking_url.includes("reservecalifornia") ? "Book on ReserveCalifornia" : "Book on Recreation.gov"}
           </a>
         </div>
       </CardContent>
@@ -370,7 +383,7 @@ function SoldOutCard({
   onAlertClick: () => void;
 }) {
   return (
-    <Card className={`opacity-70 ${highlighted ? "ring-2 ring-primary opacity-100" : ""}`}>
+    <Card className={`border-border opacity-60 ${highlighted ? "ring-2 ring-blue-500 opacity-100" : ""}`}>
       <CardHeader>
         <div className="flex items-start justify-between">
           <div>
@@ -400,7 +413,7 @@ function SoldOutCard({
             rel="noopener noreferrer"
             className="text-sm font-medium text-primary hover:underline"
           >
-            View on Recreation.gov
+            {facility.booking_url.includes("reservecalifornia") ? "View on ReserveCalifornia" : "View on Recreation.gov"}
           </a>
         </div>
       </CardContent>

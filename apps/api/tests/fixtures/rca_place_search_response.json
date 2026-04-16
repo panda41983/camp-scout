@@ -1,0 +1,22 @@
+{
+  "SelectedPlace": {
+    "PlaceId": 614,
+    "Name": "Angel Island SP",
+    "Facilities": [
+      {
+        "FacilityId": 406,
+        "Name": "East Bay (sites 1-3)",
+        "Latitude": 37.862,
+        "Longitude": -122.433,
+        "UnitCount": 3
+      },
+      {
+        "FacilityId": 407,
+        "Name": "Ridge Sites (sites 4-9)",
+        "Latitude": 37.863,
+        "Longitude": -122.434,
+        "UnitCount": 6
+      }
+    ]
+  }
+}

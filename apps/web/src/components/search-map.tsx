@@ -84,7 +84,7 @@ export function SearchMap({ center, radius, results, soldOut, hoveredId, onMarke
           type: "fill",
           source: "radius-circle",
           paint: {
-            "fill-color": "#3b82f6",
+            "fill-color": "#2d5016",
             "fill-opacity": 0.08,
           },
         });
@@ -93,7 +93,7 @@ export function SearchMap({ center, radius, results, soldOut, hoveredId, onMarke
           type: "line",
           source: "radius-circle",
           paint: {
-            "line-color": "#3b82f6",
+            "line-color": "#2d5016",
             "line-width": 1.5,
             "line-dasharray": [3, 2],
           },
@@ -121,7 +121,7 @@ export function SearchMap({ center, radius, results, soldOut, hoveredId, onMarke
     markerColorsRef.current.clear();
 
     const allFacilities = [
-      ...results.map((f) => ({ ...f, color: "#ef4444" })),  // red = available
+      ...results.map((f) => ({ ...f, color: "#2d5016" })),  // dark green = available
       ...soldOut.map((f) => ({ ...f, color: "#9ca3af" })),   // grey = sold out
     ];
 
@@ -166,7 +166,7 @@ export function SearchMap({ center, radius, results, soldOut, hoveredId, onMarke
       const el = marker.getElement();
       const pin = el.querySelector(".marker-pin") as SVGElement | null;
       if (id === hoveredId) {
-        if (pin) pin.setAttribute("fill", "#2563eb");
+        if (pin) pin.setAttribute("fill", "#3b82f6");
         el.style.filter = "drop-shadow(0 2px 4px rgba(0,0,0,0.4))";
         el.style.zIndex = "10";
       } else {

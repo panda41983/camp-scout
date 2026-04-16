@@ -8,7 +8,7 @@ from typing import Literal, Protocol, runtime_checkable
 ProviderName = Literal["recreation_gov", "reserve_california"]
 
 # {campsite_external_id: {date_iso_str: status}}
-# status: "available" | "reserved" | "not_reservable" | "closed"
+# status: "available" | "reserved" | "not_reservable" | "closed" | "locked" | "walk_in"
 AvailabilityGrid = dict[str, dict[str, str]]
 
 

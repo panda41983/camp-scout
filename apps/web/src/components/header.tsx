@@ -33,9 +33,9 @@ export function Header() {
   }
 
   return (
-    <header className="border-b bg-white">
+    <header className="border-b border-border bg-card">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
+        <Link href="/" className="font-heading text-xl font-bold tracking-tight text-primary">
           CampScout
         </Link>
         <nav className="flex items-center gap-4 text-sm">

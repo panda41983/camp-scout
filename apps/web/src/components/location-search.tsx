@@ -90,7 +90,7 @@ export function LocationSearch({ onSelect }: Props) {
         }}
       />
       {open && suggestions.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-full rounded-md border bg-white shadow-lg">
+        <ul className="absolute z-10 mt-1 w-full rounded-md border border-border bg-card shadow-lg">
           {suggestions.map((feature, i) => (
             <li key={i}>
               <button

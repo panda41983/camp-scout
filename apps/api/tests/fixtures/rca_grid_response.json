@@ -1,0 +1,84 @@
+{
+  "Message": "Built in 2.7 ms",
+  "StartDate": "2026-06-19",
+  "EndDate": "2026-06-25",
+  "Facility": {
+    "FacilityId": 406,
+    "Name": "East Bay (sites 1-3)",
+    "UnitCount": 3,
+    "Units": {
+      "bucket2.39601": {
+        "UnitId": 39601,
+        "Name": "Hike in Campsite #2",
+        "Slices": {
+          "2026-06-19T00:00:00": {
+            "Date": "2026-06-19",
+            "IsFree": true,
+            "IsBlocked": false,
+            "IsWalkin": false,
+            "ReservationId": 0,
+            "Lock": null,
+            "MinStay": 1,
+            "IsReservationDraw": false
+          },
+          "2026-06-20T00:00:00": {
+            "Date": "2026-06-20",
+            "IsFree": false,
+            "IsBlocked": false,
+            "IsWalkin": false,
+            "ReservationId": 7768031,
+            "Lock": null,
+            "MinStay": 1,
+            "IsReservationDraw": false
+          },
+          "2026-06-21T00:00:00": {
+            "Date": "2026-06-21",
+            "IsFree": false,
+            "IsBlocked": false,
+            "IsWalkin": false,
+            "ReservationId": 0,
+            "Lock": "2026-06-22T08:00:00",
+            "MinStay": 1,
+            "IsReservationDraw": false
+          },
+          "2026-06-22T00:00:00": {
+            "Date": "2026-06-22",
+            "IsFree": false,
+            "IsBlocked": true,
+            "IsWalkin": false,
+            "ReservationId": 0,
+            "Lock": null,
+            "MinStay": 1,
+            "IsReservationDraw": false
+          },
+          "2026-06-23T00:00:00": {
+            "Date": "2026-06-23",
+            "IsFree": false,
+            "IsBlocked": false,
+            "IsWalkin": true,
+            "ReservationId": 0,
+            "Lock": null,
+            "MinStay": 1,
+            "IsReservationDraw": false
+          }
+        }
+      },
+      "bucket1.39600": {
+        "UnitId": 39600,
+        "Name": "Hike in Campsite #1",
+        "Slices": {
+          "2026-06-19T00:00:00": {
+            "Date": "2026-06-19",
+            "IsFree": false,
+            "IsBlocked": false,
+            "IsWalkin": false,
+            "ReservationId": 1234567,
+            "Lock": null,
+            "MinStay": 1,
+            "IsReservationDraw": false
+          }
+        }
+      }
+    }
+  }
+}
