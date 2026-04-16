@@ -44,6 +44,9 @@ export function Header() {
           </Link>
           {user ? (
             <>
+              <Link href="/dashboard" className="text-muted-foreground hover:text-foreground">
+                Dashboard
+              </Link>
               <span className="text-muted-foreground">{user.email}</span>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Log out

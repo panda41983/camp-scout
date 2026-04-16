@@ -13,6 +13,7 @@ from campscout.config import Settings, get_settings
 from campscout.db import async_session_factory
 from campscout.providers.recreation_gov import RecreationGovProvider
 from campscout.routers.me import router as me_router
+from campscout.routers.notifications import router as notifications_router
 from campscout.routers.search import router as search_router
 from campscout.routers.watches import router as watches_router
 from campscout.scanner.runner import run_scan_cycle
@@ -56,6 +57,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(me_router)
+app.include_router(notifications_router)
 app.include_router(search_router)
 app.include_router(watches_router)
 

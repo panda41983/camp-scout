@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     scan_user_agent: str = "CampScout/0.1"
     supabase_url: str
     supabase_jwks_url: str | None = None
+    resend_api_key: str
+    notify_from_email: str = "onboarding@resend.dev"
 
     model_config = {"env_file": ENV_FILE, "env_file_encoding": "utf-8"}
 

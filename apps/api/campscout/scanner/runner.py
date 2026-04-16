@@ -12,6 +12,7 @@ from campscout.models.availability import AvailabilitySnapshot, CurrentAvailabil
 from campscout.models.facility import Facility
 from campscout.models.scan_job import ScanJob
 from campscout.providers.base import AvailabilityGrid, Provider
+from campscout.notify.dispatch import dispatch_notifications
 from campscout.scanner.diff import compute_diff
 from campscout.scanner.job_planner import get_due_jobs
 
@@ -52,14 +53,20 @@ async def _process_job(
     session: AsyncSession, job: ScanJob, provider: Provider
 ) -> None:
     """Fetch availability for one job, store snapshot, update current, compute diff."""
-    # Look up the facility's external_id
-    fac_q = select(Facility.external_id).where(Facility.id == job.facility_id)
+    # Look up the facility's external_id, name, and booking_url
+    fac_q = select(
+        Facility.external_id, Facility.name, Facility.booking_url
+    ).where(Facility.id == job.facility_id)
     fac_result = await session.execute(fac_q)
-    external_id = fac_result.scalar_one_or_none()
+    fac_row = fac_result.one_or_none()
 
-    if external_id is None:
+    if fac_row is None:
         log.warning("scan_job_orphaned", job_id=job.id, facility_id=job.facility_id)
         return
+
+    external_id = fac_row.external_id
+    facility_name = fac_row.name
+    booking_url = fac_row.booking_url
 
     try:
         grid = await provider.fetch_availability(external_id, job.month)
@@ -121,6 +128,12 @@ async def _process_job(
                 newly_available_sites=len(diff.newly_available),
                 newly_unavailable_sites=len(diff.newly_unavailable),
             )
+            if diff.newly_available:
+                sent = await dispatch_notifications(
+                    session, job.facility_id, facility_name, booking_url, diff
+                )
+                if sent:
+                    log.info("notifications_sent", count=sent, facility_id=job.facility_id)
 
     # Update the job
     job.last_run_at = now
