@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { apiClient } from "@/lib/api";
+import { apiClient, ApiError } from "@/lib/api";
 import type { FacilityResult, WatchResponse } from "@/lib/types";
 
 interface Props {
@@ -23,6 +23,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  onAuthExpired: () => void;
 }
 
 export function AlertDialogWatch({
@@ -34,6 +35,7 @@ export function AlertDialogWatch({
   open,
   onOpenChange,
   onSuccess,
+  onAuthExpired,
 }: Props) {
   const defaultName = `Alert: ${facility.name}`;
   const [name, setName] = useState(defaultName);
@@ -60,6 +62,11 @@ export function AlertDialogWatch({
       onOpenChange(false);
       onSuccess();
     } catch (err) {
+      if (err instanceof ApiError && (err.status === 401 || err.status === 422)) {
+        onOpenChange(false);
+        onAuthExpired();
+        return;
+      }
       setError(err instanceof Error ? err.message : "Failed to create alert");
     } finally {
       setLoading(false);

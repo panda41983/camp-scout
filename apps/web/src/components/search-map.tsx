@@ -37,13 +37,15 @@ interface Props {
   results: FacilityResult[];
   soldOut: SoldOutFacility[];
   hoveredId: number | null;
+  onMarkerHover: (id: number | null) => void;
   onMarkerClick: (id: number) => void;
 }
 
-export function SearchMap({ center, radius, results, soldOut, hoveredId, onMarkerClick }: Props) {
+export function SearchMap({ center, radius, results, soldOut, hoveredId, onMarkerHover, onMarkerClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<number, maplibregl.Marker>>(new Map());
+  const markerColorsRef = useRef<Map<number, string>>(new Map());
 
   // Initialize map
   useEffect(() => {
@@ -116,6 +118,7 @@ export function SearchMap({ center, radius, results, soldOut, hoveredId, onMarke
       marker.remove();
     }
     markersRef.current.clear();
+    markerColorsRef.current.clear();
 
     const allFacilities = [
       ...results.map((f) => ({ ...f, color: "#ef4444" })),  // red = available
@@ -137,12 +140,15 @@ export function SearchMap({ center, radius, results, soldOut, hoveredId, onMarke
       el.style.cssText = "cursor: pointer; transition: filter 0.15s;";
 
       el.addEventListener("click", () => onMarkerClick(facility.id));
+      el.addEventListener("mouseenter", () => onMarkerHover(facility.id));
+      el.addEventListener("mouseleave", () => onMarkerHover(null));
 
       const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
         .setLngLat([facility.lng, facility.lat])
         .addTo(map);
 
       markersRef.current.set(facility.id, marker);
+      markerColorsRef.current.set(facility.id, facility.color);
       bounds.extend([facility.lng, facility.lat]);
     }
 
@@ -152,7 +158,7 @@ export function SearchMap({ center, radius, results, soldOut, hoveredId, onMarke
     }
 
     map.fitBounds(bounds, { padding: 50, maxZoom: 12 });
-  }, [results, soldOut, center, onMarkerClick]);
+  }, [results, soldOut, center, onMarkerHover, onMarkerClick]);
 
   // Highlight hovered marker — change SVG fill, not transform (MapLibre owns transform)
   useEffect(() => {
@@ -164,7 +170,8 @@ export function SearchMap({ center, radius, results, soldOut, hoveredId, onMarke
         el.style.filter = "drop-shadow(0 2px 4px rgba(0,0,0,0.4))";
         el.style.zIndex = "10";
       } else {
-        if (pin) pin.setAttribute("fill", "#ef4444");
+        const originalColor = markerColorsRef.current.get(id) ?? "#ef4444";
+        if (pin) pin.setAttribute("fill", originalColor);
         el.style.filter = "none";
         el.style.zIndex = "1";
       }

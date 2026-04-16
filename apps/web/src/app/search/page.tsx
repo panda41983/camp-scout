@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialogWatch } from "@/components/alert-dialog-watch";
 import { LocationSearch } from "@/components/location-search";
 import { SearchMap } from "@/components/search-map";
@@ -35,6 +37,7 @@ export default function SearchPage() {
   const [token, setToken] = useState<string | null>(null);
   const [alertFacility, setAlertFacility] = useState<FacilityResult | null>(null);
   const [watchedIds, setWatchedIds] = useState<Set<number>>(new Set());
+  const [showAuthExpired, setShowAuthExpired] = useState(false);
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const supabase = createClient();
 
@@ -244,6 +247,7 @@ export default function SearchPage() {
           results={results}
           soldOut={soldOut}
           hoveredId={hoveredId}
+          onMarkerHover={setHoveredId}
           onMarkerClick={handleMarkerClick}
         />
       </div>
@@ -261,7 +265,29 @@ export default function SearchPage() {
           onSuccess={() => {
             setWatchedIds((prev) => new Set([...prev, alertFacility.id]));
           }}
+          onAuthExpired={() => {
+            setUser(null);
+            setToken(null);
+            setShowAuthExpired(true);
+          }}
         />
+      )}
+
+      {/* Session expired dialog */}
+      {showAuthExpired && (
+        <Dialog open={showAuthExpired} onOpenChange={setShowAuthExpired}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Session expired</DialogTitle>
+              <DialogDescription>
+                Your login session has expired. Please log in again to create alerts.
+              </DialogDescription>
+            </DialogHeader>
+            <Link href="/login">
+              <Button className="w-full">Log in</Button>
+            </Link>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
