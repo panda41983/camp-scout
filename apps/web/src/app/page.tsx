@@ -4,19 +4,28 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
-      {/* Hero */}
-      <section className="flex flex-col items-center justify-center px-4 py-24">
-        <div className="max-w-lg text-center">
-          <h1 className="font-heading text-5xl font-bold tracking-tight text-primary sm:text-6xl">
+      {/* Hero with background image */}
+      <section className="relative flex flex-col items-center justify-center px-4 py-32 sm:py-40">
+        <Image
+          src="/hero-bg.jpg"
+          alt="Mountain landscape"
+          fill
+          className="object-cover"
+          priority
+        />
+        {/* Dark overlay for text readability */}
+        <div className="absolute inset-0 bg-black/45" />
+        <div className="relative z-10 max-w-lg text-center">
+          <h1 className="font-heading text-5xl font-bold tracking-tight text-white drop-shadow-lg sm:text-6xl">
             CampScout
           </h1>
-          <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
+          <p className="mt-6 text-lg leading-relaxed text-white/90 drop-shadow">
             Find your perfect campsite in the wild. Search across Recreation.gov
             and California state parks by location and dates, set alerts for
             sold-out campgrounds, and never miss an opening again.
           </p>
           <Link href="/search">
-            <button className="mt-8 cursor-pointer rounded-lg bg-primary px-8 py-3 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+            <button className="mt-8 cursor-pointer rounded-lg bg-primary px-8 py-3 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 shadow-lg">
               Start searching
             </button>
           </Link>

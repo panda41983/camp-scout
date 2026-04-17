@@ -49,6 +49,7 @@ function SearchPage() {
   const [alertFacility, setAlertFacility] = useState<FacilityResult | null>(null);
   const [watchedIds, setWatchedIds] = useState<Set<number>>(new Set());
   const [showAuthExpired, setShowAuthExpired] = useState(false);
+  const [showMap, setShowMap] = useState(true);
   const [sortBy, setSortBy] = useState<"dates" | "name" | "distance">("dates");
   const [providerFilter, setProviderFilter] = useState<"all" | "recreation_gov" | "reserve_california">("all");
   const [sharecopied, setShareCopied] = useState(false);
@@ -375,8 +376,19 @@ function SearchPage() {
         </div>
       </div>
 
+      {/* Map toggle for mobile */}
+      <div className="lg:hidden">
+        <button
+          type="button"
+          onClick={() => setShowMap(!showMap)}
+          className="w-full border-t border-border bg-card px-4 py-2 text-center text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+        >
+          {showMap ? "Hide map ▲" : "Show map ▼"}
+        </button>
+      </div>
+
       {/* Right panel: map */}
-      <div className="h-[400px] w-full lg:h-auto lg:w-3/5">
+      <div className={`w-full lg:h-auto lg:w-3/5 lg:block ${showMap ? "h-[400px]" : "hidden lg:block"}`}>
         <SearchMap
           center={location}
           radius={radius}
