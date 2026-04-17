@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     supabase_jwks_url: str | None = None
     resend_api_key: str
     notify_from_email: str = "onboarding@resend.dev"
+    frontend_url: str = "http://localhost:3000"
+    scanner_enabled: bool = False
 
     model_config = {"env_file": ENV_FILE, "env_file_encoding": "utf-8"}
 

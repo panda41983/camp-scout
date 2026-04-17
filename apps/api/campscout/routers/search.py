@@ -148,6 +148,16 @@ async def search(
     # Query for ALL facilities in the radius that are NOT in the available results
     available_ids = {fr.id for fr in results}
 
+    # Use a subquery to get the most recent scraped_at per facility
+    latest_scan = (
+        select(
+            CurrentAvailability.facility_id,
+            func.max(CurrentAvailability.scraped_at).label("last_scraped"),
+        )
+        .group_by(CurrentAvailability.facility_id)
+        .subquery()
+    )
+
     sold_out_stmt = (
         select(
             Facility.id,
@@ -157,7 +167,9 @@ async def search(
             func.ST_Y(func.geometry(Facility.location)).label("lat"),
             func.ST_X(func.geometry(Facility.location)).label("lng"),
             Facility.booking_url,
+            latest_scan.c.last_scraped,
         )
+        .outerjoin(latest_scan, latest_scan.c.facility_id == Facility.id)
         .where(
             func.ST_DWithin(Facility.location, center_point, radius_meters),
         )
@@ -178,6 +190,7 @@ async def search(
             lat=row.lat,
             lng=row.lng,
             booking_url=row.booking_url,
+            last_updated=row.last_scraped,
         )
         for row in sold_out_result.all()
     ]

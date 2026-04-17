@@ -66,6 +66,7 @@ class SoldOutFacility(BaseModel):
     lat: float
     lng: float
     booking_url: str
+    last_updated: datetime.datetime | None
 
 
 class SearchResponse(BaseModel):

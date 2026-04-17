@@ -25,25 +25,28 @@ async def dispatch_notifications(
     diff: DiffResult,
 ) -> int:
     """Find matching watches, dedup, send emails. Returns count of emails sent."""
-    # Collect all newly-available dates across all campsites
-    new_dates: set[datetime.date] = set()
+    # Collect available and locked dates separately
+    avail_dates: set[datetime.date] = set()
+    locked_dates: set[datetime.date] = set()
     campsite_ids: list[str] = []
+
     for site_id, date_strs in diff.newly_available.items():
         campsite_ids.append(site_id)
         for ds in date_strs:
-            new_dates.add(datetime.date.fromisoformat(ds))
-    # Locked sites are cancellations about to unlock — also notify
+            avail_dates.add(datetime.date.fromisoformat(ds))
+
     for site_id, date_strs in diff.newly_locked.items():
         if site_id not in campsite_ids:
             campsite_ids.append(site_id)
         for ds in date_strs:
-            new_dates.add(datetime.date.fromisoformat(ds))
+            locked_dates.add(datetime.date.fromisoformat(ds))
 
-    if not new_dates:
+    all_dates = avail_dates | locked_dates
+    if not all_dates:
         return 0
 
-    min_date = min(new_dates)
-    max_date = max(new_dates)
+    min_date = min(all_dates)
+    max_date = max(all_dates)
 
     # Find active watches that cover this facility and overlap the date range
     stmt = (
@@ -66,15 +69,20 @@ async def dispatch_notifications(
             continue
 
         # Filter dates to those within this watch's range
-        watch_dates = sorted(
-            d for d in new_dates if watch.date_start <= d <= watch.date_end
+        watch_avail = sorted(
+            d for d in avail_dates if watch.date_start <= d <= watch.date_end
         )
-        if not watch_dates:
+        watch_locked = sorted(
+            d for d in locked_dates if watch.date_start <= d <= watch.date_end
+        )
+
+        if not watch_avail and not watch_locked:
             continue
 
-        # Dedup check
+        # Dedup check uses all dates combined
+        all_watch_dates = sorted(set(watch_avail + watch_locked))
         ok_to_send, dedup_key = await should_send(
-            session, watch.id, facility_id, watch_dates
+            session, watch.id, facility_id, all_watch_dates
         )
         if not ok_to_send:
             log.info(
@@ -84,22 +92,22 @@ async def dispatch_notifications(
             )
             continue
 
-        # Send email
+        # Send email with available and locked dates separated
         success = await send_availability_alert(
             to_email=user_email,
             facility_name=facility_name,
             booking_url=booking_url,
-            available_dates=watch_dates,
+            available_dates=watch_avail,
             watch_name=watch.name,
+            locked_dates=watch_locked,
         )
 
         if success:
-            # Record in notifications table
             notification = Notification(
                 watch_id=watch.id,
                 user_id=watch.user_id,
                 facility_id=facility_id,
-                available_dates=watch_dates,
+                available_dates=all_watch_dates,
                 campsite_external_ids=campsite_ids,
                 channel="email",
                 dedup_key=dedup_key,

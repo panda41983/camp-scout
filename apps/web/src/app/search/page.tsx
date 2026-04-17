@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialogWatch } from "@/components/alert-dialog-watch";
+import { AvailabilityCalendar } from "@/components/availability-calendar";
 import { DatePicker } from "@/components/date-picker";
 import { LocationSearch } from "@/components/location-search";
 import { SearchMap } from "@/components/search-map";
@@ -326,6 +327,7 @@ function ResultCard({
   watching: boolean;
   onAlertClick: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const dateCount = facility.available_dates.length;
   const updatedAt = new Date(facility.last_updated);
 
@@ -354,9 +356,13 @@ function ResultCard({
       <CardContent>
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-sm text-primary font-medium">
-              {dateCount} date{dateCount !== 1 ? "s" : ""} available
-            </p>
+            <button
+              type="button"
+              onClick={() => setExpanded(!expanded)}
+              className="text-sm text-primary font-medium hover:underline cursor-pointer"
+            >
+              {dateCount} date{dateCount !== 1 ? "s" : ""} available {expanded ? "▲" : "▼"}
+            </button>
             <p className="text-xs text-muted-foreground">
               Updated {updatedAt.toLocaleDateString()} {updatedAt.toLocaleTimeString()}
             </p>
@@ -370,6 +376,9 @@ function ResultCard({
             {facility.provider === "reserve_california" ? "Book on ReserveCalifornia" : "Book on Recreation.gov"}
           </a>
         </div>
+        {expanded && (
+          <AvailabilityCalendar availableDates={facility.available_dates} />
+        )}
       </CardContent>
     </Card>
   );
@@ -416,7 +425,17 @@ function SoldOutCard({
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">No availability for these dates</p>
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">No availability for these dates</p>
+            {facility.last_updated && (
+              <p className="text-xs text-muted-foreground/70">
+                Checked {new Date(facility.last_updated).toLocaleDateString()} {new Date(facility.last_updated).toLocaleTimeString()}
+              </p>
+            )}
+            {!facility.last_updated && (
+              <p className="text-xs text-muted-foreground/70">Not yet scanned</p>
+            )}
+          </div>
           <a
             href={facility.booking_url}
             target="_blank"

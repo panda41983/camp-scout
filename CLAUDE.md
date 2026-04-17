@@ -237,6 +237,39 @@ When asking Claude Code for changes:
 5. **If a task would require >5 file changes, stop and propose a plan first.** Do not just start editing.
 6. **Don't add dependencies without justification.** This stack is already chosen. New libraries need a one-line "why not stdlib / why not existing dep" in the commit message.
 
+## Deployment
+
+### API (Fly.io)
+
+```bash
+cd apps/api
+fly deploy
+```
+
+**Secrets to set** (via `fly secrets set KEY=VALUE`):
+- `DATABASE_URL` — Supabase session pooler URL with `+asyncpg`: `postgresql+asyncpg://postgres.xxx:PASSWORD@aws-0-us-west-1.pooler.supabase.com:5432/postgres`
+- `SUPABASE_URL` — `https://xxx.supabase.co`
+- `RIDB_API_KEY` — Recreation.gov RIDB key
+- `RESEND_API_KEY` — Resend email API key
+- `FRONTEND_URL` — Vercel frontend URL (for CORS + email links)
+
+**Non-secret env vars** are in `fly.toml` `[env]` section.
+
+**Before first deploy:**
+1. Run migrations: `DATABASE_URL=<supabase_pooler_url> uv run alembic upgrade head`
+2. Seed facilities: `DATABASE_URL=<supabase_pooler_url> uv run python -m campscout.seed.recreation_gov`
+3. Seed CA facilities: `DATABASE_URL=<supabase_pooler_url> uv run python -m campscout.seed.reserve_california`
+
+### Frontend (Vercel)
+
+Connect GitHub repo to Vercel. Set these env vars in the Vercel dashboard:
+- `NEXT_PUBLIC_API_URL` — `https://campscout-api.fly.dev`
+- `NEXT_PUBLIC_SUPABASE_URL` — `https://xxx.supabase.co`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase publishable key
+- `NEXT_PUBLIC_MAPTILER_API_KEY` — MapTiler key
+
+Root directory in Vercel: `apps/web`
+
 ## Useful references
 
 - RIDB API docs: https://ridb.recreation.gov/landing
