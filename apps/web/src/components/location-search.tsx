@@ -14,6 +14,7 @@ interface Location {
 
 interface Props {
   onSelect: (location: Location) => void;
+  initialValue?: string;
 }
 
 interface Feature {
@@ -21,13 +22,21 @@ interface Feature {
   place_name: string;
 }
 
-export function LocationSearch({ onSelect }: Props) {
-  const [query, setQuery] = useState("");
+export function LocationSearch({ onSelect, initialValue }: Props) {
+  const [query, setQuery] = useState(initialValue ?? "");
   const [suggestions, setSuggestions] = useState<Feature[]>([]);
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(false);
+  const [selected, setSelected] = useState(!!initialValue);
   const debouncedQuery = useDebounce(query, 300);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Sync if initialValue changes (e.g., loaded from URL params)
+  useEffect(() => {
+    if (initialValue && !query) {
+      setQuery(initialValue);
+      setSelected(true);
+    }
+  }, [initialValue]);
 
   useEffect(() => {
     // Skip fetch if user just selected a result

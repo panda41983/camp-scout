@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,15 @@ interface Location {
   name: string;
 }
 
-export default function SearchPage() {
+export default function SearchPageWrapper() {
+  return (
+    <Suspense>
+      <SearchPage />
+    </Suspense>
+  );
+}
+
+function SearchPage() {
   const [location, setLocation] = useState<Location | null>(null);
   const [radius, setRadius] = useState(50);
   const [dateStart, setDateStart] = useState("");
@@ -40,8 +49,13 @@ export default function SearchPage() {
   const [alertFacility, setAlertFacility] = useState<FacilityResult | null>(null);
   const [watchedIds, setWatchedIds] = useState<Set<number>>(new Set());
   const [showAuthExpired, setShowAuthExpired] = useState(false);
+  const [sortBy, setSortBy] = useState<"dates" | "name" | "distance">("dates");
+  const [providerFilter, setProviderFilter] = useState<"all" | "recreation_gov" | "reserve_california">("all");
+  const [sharecopied, setShareCopied] = useState(false);
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const supabase = createClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -57,6 +71,25 @@ export default function SearchPage() {
     );
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Load search params from URL (for shared links)
+  useEffect(() => {
+    const lat = searchParams.get("lat");
+    const lng = searchParams.get("lng");
+    const name = searchParams.get("name");
+    const r = searchParams.get("radius");
+    const ds = searchParams.get("date_start");
+    const de = searchParams.get("date_end");
+    const n = searchParams.get("nights");
+
+    if (lat && lng && name) {
+      setLocation({ lat: parseFloat(lat), lng: parseFloat(lng), name });
+    }
+    if (r) setRadius(parseInt(r, 10));
+    if (ds) setDateStart(ds);
+    if (de) setDateEnd(de);
+    if (n) setNightsStr(n);
   }, []);
 
   async function handleSearch(e: React.FormEvent) {
@@ -89,12 +122,61 @@ export default function SearchPage() {
       setResults(data.results);
       setSoldOut(data.sold_out ?? []);
       setSearched(true);
+
+      // Update URL for sharing
+      const params = new URLSearchParams({
+        lat: String(location.lat),
+        lng: String(location.lng),
+        name: location.name,
+        radius: String(radius),
+        date_start: dateStart,
+        date_end: dateEnd,
+        nights: nightsStr,
+      });
+      router.replace(`/search?${params.toString()}`, { scroll: false });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed");
     } finally {
       setLoading(false);
     }
   }
+
+  function handleShare() {
+    navigator.clipboard.writeText(window.location.href);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
+  }
+
+  // Apply sort and filter to results
+  const filteredResults = results.filter(
+    (f) => providerFilter === "all" || f.provider === providerFilter
+  );
+  function distanceFrom(f: { lat: number; lng: number }) {
+    if (!location) return 0;
+    const R = 3959; // miles
+    const dLat = ((f.lat - location.lat) * Math.PI) / 180;
+    const dLng = ((f.lng - location.lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((location.lat * Math.PI) / 180) *
+        Math.cos((f.lat * Math.PI) / 180) *
+        Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  const sortedResults = [...filteredResults].sort((a, b) => {
+    if (sortBy === "name") return a.name.localeCompare(b.name);
+    if (sortBy === "distance") return distanceFrom(a) - distanceFrom(b);
+    return b.available_dates.length - a.available_dates.length;
+  });
+
+  const filteredSoldOut = [...soldOut.filter(
+    (f) => providerFilter === "all" || f.provider === providerFilter
+  )].sort((a, b) => {
+    if (sortBy === "name") return a.name.localeCompare(b.name);
+    if (sortBy === "distance") return distanceFrom(a) - distanceFrom(b);
+    return a.name.localeCompare(b.name);
+  });
 
   const handleMarkerClick = useCallback((id: number) => {
     const el = cardRefs.current.get(id);
@@ -114,7 +196,7 @@ export default function SearchPage() {
         <form onSubmit={handleSearch} className="mt-4 space-y-4">
           <div className="space-y-2">
             <Label>Location</Label>
-            <LocationSearch onSelect={setLocation} />
+            <LocationSearch onSelect={setLocation} initialValue={location?.name} />
           </div>
 
           <div className="space-y-2">
@@ -185,7 +267,40 @@ export default function SearchPage() {
             <p className="text-center text-sm text-destructive">{error}</p>
           )}
 
-          {searched && results.length === 0 && !loading && (
+          {/* Controls bar — sort, filter, share */}
+          {searched && !loading && (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as "dates" | "name" | "distance")}
+                className="rounded-lg border border-border bg-card px-3 py-1.5 font-body text-xs cursor-pointer"
+              >
+                <option value="dates">Sort: Most dates</option>
+                <option value="distance">Sort: Nearest</option>
+                <option value="name">Sort: Name A-Z</option>
+              </select>
+
+              <select
+                value={providerFilter}
+                onChange={(e) => setProviderFilter(e.target.value as "all" | "recreation_gov" | "reserve_california")}
+                className="rounded-lg border border-border bg-card px-3 py-1.5 font-body text-xs cursor-pointer"
+              >
+                <option value="all">All providers</option>
+                <option value="recreation_gov">Recreation.gov</option>
+                <option value="reserve_california">ReserveCalifornia</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={handleShare}
+                className="ml-auto rounded-lg border border-border bg-card px-3 py-1.5 font-body text-xs text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer"
+              >
+                {sharecopied ? "Link copied!" : "Share search"}
+              </button>
+            </div>
+          )}
+
+          {searched && sortedResults.length === 0 && filteredSoldOut.length === 0 && !loading && (
             <div className="rounded-lg border border-dashed p-8 text-center">
               <p className="font-medium">No campgrounds found</p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -194,13 +309,13 @@ export default function SearchPage() {
             </div>
           )}
 
-          {results.length > 0 && (
+          {sortedResults.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                {results.length} campground{results.length !== 1 ? "s" : ""} with
+                {sortedResults.length} campground{sortedResults.length !== 1 ? "s" : ""} with
                 availability within {radius}mi of {location?.name}
               </p>
-              {results.map((facility) => (
+              {sortedResults.map((facility) => (
                 <div
                   key={facility.id}
                   ref={(el) => {
@@ -221,7 +336,7 @@ export default function SearchPage() {
             </div>
           )}
 
-          {soldOut.length > 0 && (
+          {filteredSoldOut.length > 0 && (
             <div className="mt-6 space-y-3">
               <div className="flex items-center gap-3">
                 <div className="h-px flex-1 bg-border" />
@@ -230,7 +345,7 @@ export default function SearchPage() {
                 </span>
                 <div className="h-px flex-1 bg-border" />
               </div>
-              {soldOut.map((facility) => (
+              {filteredSoldOut.map((facility) => (
                 <div
                   key={facility.id}
                   ref={(el) => {
