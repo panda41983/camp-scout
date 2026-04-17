@@ -199,6 +199,7 @@ class ReserveCaliforniaProvider:
     ) -> AvailabilityGrid:
         """Fetch availability for a facility for one month (multiple 7-day requests)."""
         grid: AvailabilityGrid = {}
+        name_map: dict[str, str] = {}  # unit_id → display name
 
         for chunk_start, chunk_end in _week_chunks(month):
             try:
@@ -230,6 +231,14 @@ class ReserveCaliforniaProvider:
                     if unit_id not in grid:
                         grid[unit_id] = {}
 
+                    # Store the display name in the name map
+                    display_name = (
+                        unit_data.get("ShortName")
+                        or unit_data.get("Name")
+                        or unit_id
+                    )
+                    name_map[unit_id] = display_name
+
                     for slice_key, slice_data in slices.items():
                         day_str = _extract_date(slice_key)
                         grid[unit_id][day_str] = _parse_slice_status(slice_data)
@@ -247,6 +256,10 @@ class ReserveCaliforniaProvider:
                     facility_id=facility_external_id,
                     chunk=f"{chunk_start}–{chunk_end}",
                 )
+
+        # Store name map as a special key so the frontend can display friendly names
+        if name_map:
+            grid["_site_names"] = name_map  # type: ignore[assignment]
 
         return grid
 

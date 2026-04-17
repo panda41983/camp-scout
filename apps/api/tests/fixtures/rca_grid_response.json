@@ -10,6 +10,7 @@
       "bucket2.39601": {
         "UnitId": 39601,
         "Name": "Hike in Campsite #2",
+        "ShortName": "2",
         "Slices": {
           "2026-06-19T00:00:00": {
             "Date": "2026-06-19",
@@ -66,6 +67,7 @@
       "bucket1.39600": {
         "UnitId": 39600,
         "Name": "Hike in Campsite #1",
+        "ShortName": "1",
         "Slices": {
           "2026-06-19T00:00:00": {
             "Date": "2026-06-19",

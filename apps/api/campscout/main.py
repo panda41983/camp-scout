@@ -13,6 +13,7 @@ from campscout.config import Settings, get_settings
 from campscout.db import async_session_factory
 from campscout.providers.recreation_gov import RecreationGovProvider
 from campscout.providers.reserve_california import ReserveCaliforniaProvider
+from campscout.routers.facilities import router as facilities_router
 from campscout.routers.me import router as me_router
 from campscout.routers.notifications import router as notifications_router
 from campscout.routers.search import router as search_router
@@ -80,6 +81,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(facilities_router)
 app.include_router(me_router)
 app.include_router(notifications_router)
 app.include_router(search_router)

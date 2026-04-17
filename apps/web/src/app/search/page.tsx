@@ -377,7 +377,7 @@ function ResultCard({
           </a>
         </div>
         {expanded && (
-          <AvailabilityCalendar availableDates={facility.available_dates} />
+          <AvailabilityCalendar facilityId={facility.id} availableDates={facility.available_dates} />
         )}
       </CardContent>
     </Card>

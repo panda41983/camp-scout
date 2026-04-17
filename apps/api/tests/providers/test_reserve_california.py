@@ -73,7 +73,7 @@ async def test_fetch_availability_parses_grid(provider: ReserveCaliforniaProvide
 
     grid = await provider.fetch_availability("406", date(2026, 6, 19))
 
-    # Unit 39601 from "bucket2.39601"
+    # UnitId 39601 from "bucket2.39601"
     assert "39601" in grid
     s = grid["39601"]
     assert s["2026-06-19"] == "available"
@@ -82,9 +82,14 @@ async def test_fetch_availability_parses_grid(provider: ReserveCaliforniaProvide
     assert s["2026-06-22"] == "not_reservable"
     assert s["2026-06-23"] == "walk_in"
 
-    # Unit 39600 from "bucket1.39600"
+    # UnitId 39600 from "bucket1.39600"
     assert "39600" in grid
     assert grid["39600"]["2026-06-19"] == "reserved"
+
+    # Name map stored under _site_names
+    assert "_site_names" in grid
+    assert grid["_site_names"]["39601"] == "2"
+    assert grid["_site_names"]["39600"] == "1"
 
 
 # --- Facility discovery deduplication test ---
