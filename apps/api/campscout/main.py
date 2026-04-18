@@ -77,6 +77,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         get_settings().frontend_url,
+        "https://campscout.net",
+        "https://www.campscout.net",
+        "https://campscout-one.vercel.app",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
