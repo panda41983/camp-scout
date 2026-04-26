@@ -16,6 +16,10 @@ const quicksand = Quicksand({
 export const metadata: Metadata = {
   title: "CampScout",
   description: "Find available campsites near you",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

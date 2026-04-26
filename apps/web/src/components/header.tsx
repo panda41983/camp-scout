@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -35,7 +36,8 @@ export function Header() {
   return (
     <header className="border-b border-border bg-card">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-        <Link href="/" className="font-heading text-xl font-bold tracking-tight text-primary">
+        <Link href="/" className="flex items-center gap-2 font-heading text-xl font-bold tracking-tight text-primary">
+          <Image src="/logo.png" alt="CampScout logo" width={32} height={32} style={{ width: 32, height: "auto" }} />
           CampScout
         </Link>
         <nav className="flex items-center gap-4 text-sm">
