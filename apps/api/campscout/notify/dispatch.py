@@ -88,7 +88,9 @@ async def dispatch_notifications(
             log.info(
                 "notification_deduped",
                 watch_id=watch.id,
+                user_id=str(watch.user_id),
                 facility_id=facility_id,
+                dedup_key=dedup_key,
             )
             continue
 
@@ -103,6 +105,14 @@ async def dispatch_notifications(
         )
 
         if success:
+            log.info(
+                "notification_sent",
+                watch_id=watch.id,
+                user_id=str(watch.user_id),
+                facility_id=facility_id,
+                channel="email",
+                dates=[str(d) for d in all_watch_dates],
+            )
             notification = Notification(
                 watch_id=watch.id,
                 user_id=watch.user_id,

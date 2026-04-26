@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime
+import time
 
 import structlog
 from sqlalchemy import func, select
@@ -53,6 +54,8 @@ async def _process_job(
     session: AsyncSession, job: ScanJob, providers: dict[str, Provider]
 ) -> None:
     """Fetch availability for one job, store snapshot, update current, compute diff."""
+    t0 = time.monotonic()
+
     # Look up the facility's external_id, name, booking_url, and provider
     fac_q = select(
         Facility.external_id, Facility.name, Facility.booking_url, Facility.provider
@@ -73,6 +76,15 @@ async def _process_job(
     if provider is None:
         log.warning("scan_job_unknown_provider", job_id=job.id, provider=fac_row.provider)
         return
+
+    log.info(
+        "scan_job_starting",
+        job_id=job.id,
+        facility_id=job.facility_id,
+        external_id=external_id,
+        provider=fac_row.provider,
+        month=str(job.month),
+    )
 
     try:
         grid = await provider.fetch_availability(external_id, job.month)
@@ -147,12 +159,14 @@ async def _process_job(
     job.consecutive_failures = 0
     job.next_run_at = now + datetime.timedelta(minutes=job.interval_minutes)
 
+    duration_ms = int((time.monotonic() - t0) * 1000)
     log.info(
         "scan_job_complete",
         job_id=job.id,
         facility_id=job.facility_id,
         external_id=external_id,
         available_date_count=len(available_dates),
+        duration_ms=duration_ms,
     )
 
 
