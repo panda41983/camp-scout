@@ -360,3 +360,9 @@ vite.config.ts.timestamp-*
 .vite/
 .vercel
 .env*.local
+
+# AI tools 
+CLAUDE.md
+DECISIONS.md
+PROVIDERS.md
+SCHEMA.md
