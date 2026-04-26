@@ -79,6 +79,70 @@ export default function Home() {
         </div>
       </section>
 
+      {/* FAQ */}
+      <section className="px-4 py-20">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="font-heading text-center text-3xl font-bold text-primary">
+            Frequently asked questions
+          </h2>
+          <dl className="mt-12 space-y-8">
+            <div>
+              <dt className="font-heading text-lg font-semibold">
+                How often is availability data updated?
+              </dt>
+              <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Campgrounds you set an alert on are scanned every 15 minutes so
+                you get notified quickly when a cancellation opens up. All other
+                campgrounds are refreshed every 6 hours. Each result shows when it was last updated.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-heading text-lg font-semibold">
+                Which campgrounds do you cover?
+              </dt>
+              <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                We cover campgrounds listed on Recreation.gov (national parks,
+                national forests, and more) as well as California
+                state parks via ReserveCalifornia. More state park systems are
+                planned!
+              </dd>
+            </div>
+            <div>
+              <dt className="font-heading text-lg font-semibold">
+                How do alerts work?
+              </dt>
+              <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                When you find a campground you&apos;re interested in, save it as
+                a watch with your preferred dates. We&apos;ll scan it every 15
+                minutes and send you an email when the site becomes
+                available!
+              </dd>
+            </div>
+            <div>
+              <dt className="font-heading text-lg font-semibold">
+                Is CampScout free?
+              </dt>
+              <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Yes. CampScout is 100% free! All bookings happen on the
+                official provider sites — we never charge a fee or act as a
+                middleman.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-heading text-lg font-semibold">
+                Does CampScout book sites for me?
+              </dt>
+              <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                No. We alert you when availability opens up and link you
+                directly to the booking page, but the reservation is always
+                made by you on the official site. Auto-booking is against
+                provider terms of service and we don&apos;t support it.
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
       {/* Photo gallery + CTA */}
       <section className="px-4 py-20">
         <div className="mx-auto max-w-5xl">

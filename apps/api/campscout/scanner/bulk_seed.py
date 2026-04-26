@@ -1,7 +1,7 @@
 """Create scan_jobs for ALL facilities so the scanner keeps availability fresh.
 
 Runs daily. Creates jobs for current month + next month with a relaxed interval
-(60 min vs 15 min for watched facilities). Watched facilities keep their shorter
+(6 hours vs 15 min for watched facilities). Watched facilities keep their shorter
 intervals since recompute_scan_jobs uses min(interval).
 """
 from __future__ import annotations
@@ -18,7 +18,7 @@ from campscout.models.scan_job import ScanJob
 
 log = structlog.get_logger()
 
-BULK_INTERVAL_MINUTES = 60  # relaxed interval for bulk scanning
+BULK_INTERVAL_MINUTES = 360  # 6 hours — relaxed interval for unwatched facilities
 
 
 def _current_and_next_month() -> list[datetime.date]:
