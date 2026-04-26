@@ -1,6 +1,12 @@
+<p align="center">
+  <img src="campscout_images/CampScoutLogo.png" alt="CampScout logo" width="120">
+</p>
+
 # CampScout
 
 **Find available campsites before they're gone.**
+
+[www.campscout.net](https://www.campscout.net)
 
 ## What it does
 
