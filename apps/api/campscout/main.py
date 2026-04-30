@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from contextlib import asynccontextmanager
 from typing import Annotated
 
@@ -82,14 +83,15 @@ async def lifespan(app: FastAPI):
     if get_settings().scanner_enabled:
         scheduler = AsyncIOScheduler()
         scheduler.add_job(_scan_tick, IntervalTrigger(seconds=60), max_instances=1)
-        # Daily job: ensure all facilities have scan_jobs
+        # Bulk-seed runs every 24h; first run scheduled ~15s after startup so it
+        # doesn't block lifespan (which would stall the health check during
+        # rolling deploys when the old machine still holds row locks).
         scheduler.add_job(
             lambda: seed_bulk_scan_jobs(async_session_factory),
             IntervalTrigger(hours=24),
-            next_run_time=None,  # don't run immediately on startup
+            next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=15),
+            max_instances=1,
         )
-        # Run once on startup to seed initial jobs
-        await seed_bulk_scan_jobs(async_session_factory)
         scheduler.start()
         log.info("scanner_started", interval_seconds=60)
     else:

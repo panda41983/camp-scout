@@ -93,7 +93,9 @@ export default function Home() {
               <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Campgrounds you set an alert on are scanned every 15 minutes so
                 you get notified quickly when a cancellation opens up. All other
-                campgrounds are refreshed every 6 hours. Each result shows when it was last updated.
+                campgrounds are refreshed every 12 hours. We track availability
+                up to 6 months out — the booking horizon for most providers.
+                Each result shows when it was last updated.
               </dd>
             </div>
             <div>

@@ -7,6 +7,7 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  maxDate?: string; // YYYY-MM-DD, inclusive
 }
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -28,7 +29,7 @@ function formatDisplay(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export function DatePicker({ value, onChange, placeholder = "Select date" }: Props) {
+export function DatePicker({ value, onChange, placeholder = "Select date", maxDate }: Props) {
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
@@ -68,6 +69,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date" }: Pro
   function handleDayClick(day: number) {
     const dateStr = formatDate(viewYear, viewMonth, day);
     if (dateStr < todayStr) return;
+    if (maxDate && dateStr > maxDate) return;
     onChange(dateStr);
     setOpen(false);
   }
@@ -150,15 +152,17 @@ export function DatePicker({ value, onChange, placeholder = "Select date" }: Pro
 
                     const dateStr = formatDate(viewYear, viewMonth, day);
                     const isPast = dateStr < todayStr;
+                    const isFuture = maxDate ? dateStr > maxDate : false;
+                    const disabled = isPast || isFuture;
                     const isSelected = dateStr === value;
                     const isToday = dateStr === todayStr;
 
                     return (
                       <td
                         key={ci}
-                        onClick={() => !isPast && handleDayClick(day)}
+                        onClick={() => !disabled && handleDayClick(day)}
                         className={`h-10 w-10 border border-border text-center text-sm transition-colors
-                          ${isPast ? "text-muted-foreground/40 cursor-not-allowed" : "cursor-pointer hover:bg-accent"}
+                          ${disabled ? "text-muted-foreground/40 cursor-not-allowed" : "cursor-pointer hover:bg-accent"}
                           ${isSelected ? "bg-primary text-primary-foreground font-semibold" : ""}
                           ${isToday && !isSelected ? "font-bold text-primary" : ""}
                         `}

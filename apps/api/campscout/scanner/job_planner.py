@@ -17,7 +17,7 @@ from campscout.models.facility import Facility
 from campscout.models.scan_job import ScanJob
 from campscout.models.watch import Watch
 
-BULK_INTERVAL_MINUTES = 360  # 6 hours — relaxed default for unwatched facilities
+BULK_INTERVAL_MINUTES = 720  # 12 hours — relaxed default for unwatched facilities
 
 
 def _months_for_watch(w_start: datetime.date, w_end: datetime.date) -> list[datetime.date]:

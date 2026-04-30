@@ -20,19 +20,25 @@ from campscout.scanner.job_planner import BULK_INTERVAL_MINUTES, recompute_scan_
 log = structlog.get_logger()
 
 
-def _current_and_next_month() -> list[datetime.date]:
+SEED_MONTHS_AHEAD = 6  # current month + next 5 = 6 total months of coverage
+
+
+def _months_to_seed() -> list[datetime.date]:
     today = datetime.date.today()
-    current = today.replace(day=1)
-    if current.month == 12:
-        next_m = current.replace(year=current.year + 1, month=1)
-    else:
-        next_m = current.replace(month=current.month + 1)
-    return [current, next_m]
+    cur = today.replace(day=1)
+    months = []
+    for _ in range(SEED_MONTHS_AHEAD):
+        months.append(cur)
+        if cur.month == 12:
+            cur = cur.replace(year=cur.year + 1, month=1)
+        else:
+            cur = cur.replace(month=cur.month + 1)
+    return months
 
 
 async def seed_bulk_scan_jobs(session_factory: async_sessionmaker[AsyncSession]) -> int:
-    """Ensure every facility has scan_jobs for current + next month, then realign intervals."""
-    months = _current_and_next_month()
+    """Ensure every facility has scan_jobs for the next 6 months, then realign intervals."""
+    months = _months_to_seed()
 
     async with session_factory() as session:
         result = await session.execute(select(Facility.id))

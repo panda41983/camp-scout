@@ -165,6 +165,13 @@ function SearchPage() {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
+  // Cap selectable dates to the bulk-seed coverage window (6 months ahead)
+  const maxBookingDate = (() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 6);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+
   const sortedResults = [...filteredResults].sort((a, b) => {
     if (sortBy === "name") return a.name.localeCompare(b.name);
     if (sortBy === "distance") return distanceFrom(a) - distanceFrom(b);
@@ -225,6 +232,7 @@ function SearchPage() {
                 value={dateStart}
                 onChange={setDateStart}
                 placeholder="Select check in"
+                maxDate={maxBookingDate}
               />
             </div>
             <div className="space-y-2">
@@ -233,9 +241,14 @@ function SearchPage() {
                 value={dateEnd}
                 onChange={setDateEnd}
                 placeholder="Select check out"
+                maxDate={maxBookingDate}
               />
             </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            We track availability up to 6 months out (the booking horizon for
+            most providers).
+          </p>
 
           <div className="space-y-2">
             <Label htmlFor="nights">Minimum consecutive nights</Label>
