@@ -5,12 +5,12 @@ from typing import Annotated
 import datetime
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from campscout.auth import CurrentUser, get_current_user
-from campscout.db import get_db
+from campscout.db import async_session_factory, get_db
 from campscout.models.availability import CurrentAvailability
 from campscout.models.facility import Facility
 from campscout.models.user import User
@@ -22,6 +22,8 @@ from campscout.scanner.job_planner import recompute_scan_jobs
 from campscout.schemas.watch import CreateWatchRequest, UpdateWatchRequest, WatchResponse
 
 router = APIRouter(prefix="/api")
+
+log = structlog.get_logger()
 
 
 def _watch_to_response(watch: Watch) -> WatchResponse:
@@ -37,9 +39,19 @@ def _watch_to_response(watch: Watch) -> WatchResponse:
     )
 
 
+async def _recompute_in_background() -> None:
+    """Run recompute_scan_jobs in its own session after the response is sent."""
+    try:
+        async with async_session_factory() as session:
+            await recompute_scan_jobs(session)
+    except Exception:
+        log.exception("recompute_scan_jobs_failed")
+
+
 @router.post("/watches", response_model=WatchResponse, status_code=201)
 async def create_watch(
     body: CreateWatchRequest,
+    background_tasks: BackgroundTasks,
     user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> WatchResponse:
@@ -52,9 +64,10 @@ async def create_watch(
         nights=body.nights,
     )
     db.add(watch)
-    await db.flush()
+    await db.commit()
+    await db.refresh(watch)
 
-    await recompute_scan_jobs(db)
+    background_tasks.add_task(_recompute_in_background)
 
     return _watch_to_response(watch)
 
@@ -75,14 +88,16 @@ async def list_watches(
 async def update_watch(
     watch_id: int,
     body: UpdateWatchRequest,
+    background_tasks: BackgroundTasks,
     user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> WatchResponse:
     watch = await _get_owned_watch(db, watch_id, user.id)
     watch.is_active = body.is_active
-    await db.flush()
+    await db.commit()
+    await db.refresh(watch)
 
-    await recompute_scan_jobs(db)
+    background_tasks.add_task(_recompute_in_background)
 
     return _watch_to_response(watch)
 
@@ -90,17 +105,15 @@ async def update_watch(
 @router.delete("/watches/{watch_id}", status_code=204)
 async def delete_watch(
     watch_id: int,
+    background_tasks: BackgroundTasks,
     user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     watch = await _get_owned_watch(db, watch_id, user.id)
     await db.delete(watch)
-    await db.flush()
+    await db.commit()
 
-    await recompute_scan_jobs(db)
-
-
-log = structlog.get_logger()
+    background_tasks.add_task(_recompute_in_background)
 
 
 async def _notify_existing_availability(
@@ -109,7 +122,6 @@ async def _notify_existing_availability(
     """If the watched facility already has availability, send an immediate email."""
     try:
         for fid in (watch.facility_ids or []):
-            # Check current_availability for matching dates
             result = await db.execute(
                 select(CurrentAvailability.available_dates)
                 .where(CurrentAvailability.facility_id == fid)
@@ -118,14 +130,12 @@ async def _notify_existing_availability(
             for row in result.all():
                 all_dates.extend(row[0] or [])
 
-            # Filter to watch's date range
             matching = sorted(
                 d for d in all_dates if watch.date_start <= d <= watch.date_end
             )
             if not matching:
                 continue
 
-            # Get facility info
             fac_result = await db.execute(
                 select(Facility.name, Facility.booking_url).where(Facility.id == fid)
             )
@@ -133,12 +143,10 @@ async def _notify_existing_availability(
             if not fac_row:
                 continue
 
-            # Dedup check
             ok, dedup_key = await should_send(db, watch.id, fid, matching)
             if not ok:
                 continue
 
-            # Send email
             success = await send_availability_alert(
                 to_email=user.email,
                 facility_name=fac_row.name,

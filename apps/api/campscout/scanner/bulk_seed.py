@@ -1,24 +1,23 @@
 """Create scan_jobs for ALL facilities so the scanner keeps availability fresh.
 
-Runs daily. Creates jobs for current month + next month with a relaxed interval
-(6 hours vs 15 min for watched facilities). Watched facilities keep their shorter
-intervals since recompute_scan_jobs uses min(interval).
+Runs daily and once on startup. Inserts missing (facility, month) rows with
+BULK_INTERVAL_MINUTES, then realigns intervals against active watches so
+unwatched rows drift back up to the relaxed default.
 """
 from __future__ import annotations
 
 import datetime
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from campscout.models.facility import Facility
 from campscout.models.scan_job import ScanJob
+from campscout.scanner.job_planner import BULK_INTERVAL_MINUTES, recompute_scan_jobs
 
 log = structlog.get_logger()
-
-BULK_INTERVAL_MINUTES = 360  # 6 hours — relaxed interval for unwatched facilities
 
 
 def _current_and_next_month() -> list[datetime.date]:
@@ -32,11 +31,10 @@ def _current_and_next_month() -> list[datetime.date]:
 
 
 async def seed_bulk_scan_jobs(session_factory: async_sessionmaker[AsyncSession]) -> int:
-    """Ensure every facility has scan_jobs for current + next month. Returns jobs created."""
+    """Ensure every facility has scan_jobs for current + next month, then realign intervals."""
     months = _current_and_next_month()
 
     async with session_factory() as session:
-        # Get all facility IDs
         result = await session.execute(select(Facility.id))
         facility_ids = [row[0] for row in result.all()]
 
@@ -48,7 +46,6 @@ async def seed_bulk_scan_jobs(session_factory: async_sessionmaker[AsyncSession])
                     month=month,
                     interval_minutes=BULK_INTERVAL_MINUTES,
                 )
-                # Don't overwrite existing jobs (watches may have shorter intervals)
                 stmt = stmt.on_conflict_do_nothing(index_elements=["facility_id", "month"])
                 result = await session.execute(stmt)
                 if result.rowcount > 0:
@@ -56,5 +53,12 @@ async def seed_bulk_scan_jobs(session_factory: async_sessionmaker[AsyncSession])
 
         await session.commit()
 
-    log.info("bulk_scan_jobs_seeded", created=created, total_facilities=len(facility_ids))
+        realigned = await recompute_scan_jobs(session)
+
+    log.info(
+        "bulk_scan_jobs_seeded",
+        created=created,
+        watch_covered=realigned,
+        total_facilities=len(facility_ids),
+    )
     return created
