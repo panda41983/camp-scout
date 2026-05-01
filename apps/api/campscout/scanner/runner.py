@@ -174,19 +174,31 @@ async def run_scan_cycle(
     session_factory: async_sessionmaker[AsyncSession],
     providers: dict[str, Provider],
 ) -> int:
-    """Run one scan cycle: pull due jobs, scrape, store, diff. Returns jobs processed."""
+    """Run one scan cycle: pull due jobs, scrape, store, diff. Returns jobs processed.
+
+    Commits after each job so locks stay short (otherwise the seed and any
+    other writer can block for the full ~10-minute cycle).
+    """
     async with session_factory() as session:
         jobs = await get_due_jobs(session)
+        job_ids = [j.id for j in jobs]
 
-        if not jobs:
-            return 0
+    if not job_ids:
+        return 0
 
-        log.info("scan_cycle_starting", job_count=len(jobs))
+    log.info("scan_cycle_starting", job_count=len(job_ids))
 
-        for job in jobs:
-            await _process_job(session, job, providers)
+    processed = 0
+    for job_id in job_ids:
+        async with session_factory() as job_session:
+            job = (
+                await job_session.execute(select(ScanJob).where(ScanJob.id == job_id))
+            ).scalar_one_or_none()
+            if job is None:
+                continue
+            await _process_job(job_session, job, providers)
+            await job_session.commit()
+            processed += 1
 
-        await session.commit()
-
-    log.info("scan_cycle_complete", job_count=len(jobs))
-    return len(jobs)
+    log.info("scan_cycle_complete", job_count=processed)
+    return processed
