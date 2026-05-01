@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime
 
 from geoalchemy2 import Geography
-from sqlalchemy import cast, func, select, tuple_, update
+from sqlalchemy import cast, func, select, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -80,6 +80,9 @@ async def recompute_scan_jobs(session: AsyncSession) -> int:
     interval. For previously-watched rows no longer covered, relax back up to
     BULK_INTERVAL_MINUTES. Never deletes — bulk-seeded coverage is preserved.
     """
+    # Supabase has a tight statement_timeout (~8s) on some roles; relax for this tx
+    await session.execute(text("SET LOCAL statement_timeout = '60s'"))
+
     needed = await _compute_watch_intervals(session)
 
     for (facility_id, month), interval in needed.items():

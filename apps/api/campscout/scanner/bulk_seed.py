@@ -1,6 +1,6 @@
 """Create scan_jobs for ALL facilities so the scanner keeps availability fresh.
 
-Runs daily and once on startup. Inserts missing (facility, month) rows with
+Runs daily and ~15s after startup. Inserts missing (facility, month) rows with
 BULK_INTERVAL_MINUTES, then realigns intervals against active watches so
 unwatched rows drift back up to the relaxed default.
 """
@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -21,6 +21,7 @@ log = structlog.get_logger()
 
 
 SEED_MONTHS_AHEAD = 6  # current month + next 5 = 6 total months of coverage
+SEED_COMMIT_BATCH = 100  # commit every N facilities so locks stay short
 
 
 def _months_to_seed() -> list[datetime.date]:
@@ -37,15 +38,23 @@ def _months_to_seed() -> list[datetime.date]:
 
 
 async def seed_bulk_scan_jobs(session_factory: async_sessionmaker[AsyncSession]) -> int:
-    """Ensure every facility has scan_jobs for the next 6 months, then realign intervals."""
+    """Ensure every facility has scan_jobs for the next 6 months, then realign intervals.
+
+    Commits per batch of facilities to keep transactions short and avoid blocking
+    the scanner. Bumps statement_timeout so a brief lock wait doesn't abort the run.
+    """
     months = _months_to_seed()
+    log.info("bulk_seed_starting", months=[m.isoformat() for m in months])
 
     async with session_factory() as session:
+        # Supabase defaults statement_timeout to 8s on some roles; loosen for this run
+        await session.execute(text("SET LOCAL statement_timeout = '60s'"))
+
         result = await session.execute(select(Facility.id))
         facility_ids = [row[0] for row in result.all()]
 
         created = 0
-        for fid in facility_ids:
+        for i, fid in enumerate(facility_ids):
             for month in months:
                 stmt = insert(ScanJob).values(
                     facility_id=fid,
@@ -56,6 +65,11 @@ async def seed_bulk_scan_jobs(session_factory: async_sessionmaker[AsyncSession])
                 result = await session.execute(stmt)
                 if result.rowcount > 0:
                     created += 1
+
+            if (i + 1) % SEED_COMMIT_BATCH == 0:
+                await session.commit()
+                # SET LOCAL only lasts for the prior tx; reapply for the next one
+                await session.execute(text("SET LOCAL statement_timeout = '60s'"))
 
         await session.commit()
 

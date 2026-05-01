@@ -76,6 +76,14 @@ async def _scan_tick() -> None:
             await p.aclose()
 
 
+async def _scheduled_bulk_seed() -> None:
+    """Wrapper so APScheduler awaits the coroutine instead of getting a lambda."""
+    try:
+        await seed_bulk_scan_jobs(async_session_factory)
+    except Exception:
+        log.exception("scheduled_bulk_seed_failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _configure_logging(get_settings().environment)
@@ -87,7 +95,7 @@ async def lifespan(app: FastAPI):
         # doesn't block lifespan (which would stall the health check during
         # rolling deploys when the old machine still holds row locks).
         scheduler.add_job(
-            lambda: seed_bulk_scan_jobs(async_session_factory),
+            _scheduled_bulk_seed,
             IntervalTrigger(hours=24),
             next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=15),
             max_instances=1,
